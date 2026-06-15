@@ -4,6 +4,9 @@ const STORAGE_KEY = "prestapp-dashboard-v2";
 const SELECTED_LOAN_KEY = "prestapp-selected-loan";
 const SELECTED_INSTALLMENT_KEY = "prestapp-selected-installment";
 const OLD_STORAGE_KEY = "control-prestamos-v1";
+const PENDING_SYNC_KEY = "prestapp-pending-sync";
+const DELETED_LOANS_KEY = "prestapp-deleted-loans";
+const LEGACY_DEMO_CUTOFF = "2026-06-15T16:14:48.000Z";
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY =
   import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
@@ -93,15 +96,22 @@ function bindLoanForm() {
 
   q("startDate").value = todayIso;
   ["input", "change"].forEach((eventName) => form.addEventListener(eventName, updatePreview));
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const submitButton = event.submitter;
+    if (submitButton) submitButton.disabled = true;
     const loan = createLoanFromForm();
     state.loans.unshift(loan);
     selectedLoanId = loan.id;
     localStorage.setItem(SELECTED_LOAN_KEY, selectedLoanId);
-    saveState();
-    showToast("Prestamo guardado");
-    window.location.href = "/prestamos.html";
+    try {
+      await saveState({ immediate: true });
+      showToast("Prestamo guardado");
+    } catch (error) {
+      handleSupabaseError(error, "guardar datos");
+    } finally {
+      window.location.href = "/prestamos.html";
+    }
   });
   updatePreview();
 }
@@ -487,7 +497,7 @@ function loadState() {
     try {
       const parsed = JSON.parse(oldSaved);
       if (Array.isArray(parsed.loans) && parsed.loans.length > 1) {
-        return sanitizeState({ loans: parsed.loans.map(normalizeLoan) });
+        return sanitizeState({ loans: parsed.loans.map(normalizeLoan) }, { removeLegacyDemos: true });
       }
     } catch (error) {
       console.warn("No se pudo migrar el respaldo anterior", error);
@@ -497,14 +507,21 @@ function loadState() {
   return { loans: [] };
 }
 
-function saveState() {
+function saveState(options = {}) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  markPendingSync();
+  if (options.immediate) return flushRemoteSave();
   queueRemoteSave();
+  return Promise.resolve(false);
 }
 
 async function loadRemoteState() {
   if (!supabase) return;
   try {
+    if (hasPendingSync()) {
+      await flushRemoteSave();
+    }
+
     const { data: loans, error: loansError } = await supabase
       .from("loans")
       .select("*")
@@ -526,7 +543,10 @@ async function loadRemoteState() {
     if (installmentsError) throw installmentsError;
     if (paymentsError) throw paymentsError;
 
-    state = sanitizeState({ loans: loans.map((loan) => fromDbLoan(loan, installments || [], payments || [])) });
+    state = sanitizeState(
+      { loans: loans.map((loan) => fromDbLoan(loan, installments || [], payments || [])) },
+      { removeLegacyDemos: true }
+    );
     selectedLoanId = state.loans[0]?.id || "";
     localStorage.setItem(SELECTED_LOAN_KEY, selectedLoanId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -541,17 +561,27 @@ function queueRemoteSave() {
   if (!supabase || !supabaseSchemaReady) return;
   window.clearTimeout(syncTimer);
   syncTimer = window.setTimeout(() => {
-    syncAllToSupabase().catch((error) => handleSupabaseError(error, "guardar datos"));
+    flushRemoteSave().catch((error) => handleSupabaseError(error, "guardar datos"));
   }, 400);
+}
+
+async function flushRemoteSave() {
+  if (!supabase || !supabaseSchemaReady) return false;
+  window.clearTimeout(syncTimer);
+  await syncAllToSupabase();
+  return true;
 }
 
 async function syncAllToSupabase() {
   if (!supabase) return;
+  const pendingDeletedLoanIds = getPendingDeletedLoanIds();
 
   if (!state.loans.length) {
     await supabase.from("payments").delete().neq("id", "__none__");
     await supabase.from("installments").delete().neq("id", "__none__");
     await supabase.from("loans").delete().neq("id", "__none__");
+    clearPendingDeletedLoanIds(pendingDeletedLoanIds);
+    clearPendingSync();
     return;
   }
 
@@ -559,6 +589,12 @@ async function syncAllToSupabase() {
   const loanIds = dbLoans.map((loan) => loan.id);
   const dbInstallments = state.loans.flatMap((loan) => loan.installments.map((item) => toDbInstallment(item, loan.id)));
   const dbPayments = state.loans.flatMap((loan) => loan.payments.map((item) => toDbPayment(item, loan.id)));
+  const deletedLoanIds = pendingDeletedLoanIds.filter((loanId) => !loanIds.includes(loanId));
+
+  if (deletedLoanIds.length) {
+    const { error } = await supabase.from("loans").delete().in("id", deletedLoanIds);
+    if (error) throw error;
+  }
 
   const { error: loansError } = await supabase.from("loans").upsert(dbLoans);
   if (loansError) throw loansError;
@@ -578,12 +614,55 @@ async function syncAllToSupabase() {
     const { error } = await supabase.from("payments").insert(dbPayments);
     if (error) throw error;
   }
+
+  clearPendingDeletedLoanIds(deletedLoanIds);
+  clearPendingSync();
 }
 
 async function deleteRemoteLoans(loanIds) {
-  if (!supabase || !loanIds.length) return;
+  if (!loanIds.length) return;
+  markPendingDeletedLoans(loanIds);
+  if (!supabase) return;
   const { error } = await supabase.from("loans").delete().in("id", loanIds);
   if (error) handleSupabaseError(error, "eliminar datos");
+  else clearPendingDeletedLoanIds(loanIds);
+}
+
+function markPendingSync() {
+  if (!supabase || !supabaseSchemaReady) return;
+  localStorage.setItem(PENDING_SYNC_KEY, "1");
+}
+
+function clearPendingSync() {
+  localStorage.removeItem(PENDING_SYNC_KEY);
+}
+
+function hasPendingSync() {
+  return localStorage.getItem(PENDING_SYNC_KEY) === "1";
+}
+
+function getPendingDeletedLoanIds() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(DELETED_LOANS_KEY) || "[]");
+    return Array.isArray(ids) ? ids.filter(Boolean) : [];
+  } catch (error) {
+    console.warn("No se pudo leer la lista de prestamos eliminados", error);
+    return [];
+  }
+}
+
+function markPendingDeletedLoans(loanIds) {
+  const ids = new Set([...getPendingDeletedLoanIds(), ...loanIds.filter(Boolean)]);
+  localStorage.setItem(DELETED_LOANS_KEY, JSON.stringify([...ids]));
+  markPendingSync();
+}
+
+function clearPendingDeletedLoanIds(loanIds) {
+  if (!loanIds.length) return;
+  const done = new Set(loanIds);
+  const pending = getPendingDeletedLoanIds().filter((loanId) => !done.has(loanId));
+  if (pending.length) localStorage.setItem(DELETED_LOANS_KEY, JSON.stringify(pending));
+  else localStorage.removeItem(DELETED_LOANS_KEY);
 }
 
 function createLoanFromForm() {
@@ -650,15 +729,28 @@ function normalizeLoan(loan) {
   };
 }
 
-function sanitizeState(value) {
-  const loans = Array.isArray(value.loans) ? value.loans.filter((loan) => !isDemoLoan(loan)) : [];
+function sanitizeState(value, options = {}) {
+  const loans = Array.isArray(value.loans)
+    ? value.loans.filter((loan) => !isLegacyDemoLoan(loan, options))
+    : [];
   return { ...value, loans };
+}
+
+function isLegacyDemoLoan(loan, options = {}) {
+  return options.removeLegacyDemos && isDemoLoan(loan) && isBeforeLegacyDemoCutoff(loan.createdAt);
 }
 
 function isDemoLoan(loan) {
   return DEMO_LOANS.some(([borrower, phone, amount]) => {
     return loan.borrower === borrower && loan.phone === phone && Number(loan.amount) === amount;
   });
+}
+
+function isBeforeLegacyDemoCutoff(value) {
+  if (!value) return true;
+  const time = new Date(value).getTime();
+  const cutoff = new Date(LEGACY_DEMO_CUTOFF).getTime();
+  return !Number.isFinite(time) || time < cutoff;
 }
 
 function openEditDialog(loan) {
