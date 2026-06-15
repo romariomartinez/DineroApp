@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrestApp - Pagos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="payments">
+    <div class="dashboard-layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand"><span class="brand-mark">P</span><strong>PrestApp</strong></div>
+        <nav class="side-nav" aria-label="Menu principal">
+          <span class="nav-label">MENU</span>
+          <a class="nav-item" href="/index.html"><span class="nav-icon">IN</span>Inicio</a>
+          <a class="nav-item" href="/clientes.html"><span class="nav-icon">CL</span>Clientes</a>
+          <a class="nav-item" href="/nuevo-prestamo.html"><span class="nav-icon">NP</span>Nuevo Prestamo</a>
+          <a class="nav-item" href="/prestamos.html"><span class="nav-icon">PR</span>Prestamos</a>
+          <a class="nav-item active" href="/pagos.html"><span class="nav-icon">PG</span>Pagos</a>
+          <a class="nav-item" href="/prestamos.html?filter=overdue"><span class="nav-icon">MO</span>Moras</a>
+          <a class="nav-item" href="/reportes.html"><span class="nav-icon">RP</span>Reportes</a>
+          <a class="nav-item" href="/configuracion.html"><span class="nav-icon">CF</span>Configuracion</a>
+        </nav>
+        <div class="admin-card"><span class="avatar">A</span><div><strong>Administrador</strong><small>admin@prestapp.com</small></div></div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu">&#9776;</button>
+          <label class="search-box"><input id="searchInput" type="search" placeholder="Buscar cliente..." /><span aria-hidden="true"></span></label>
+          <button class="notification-button" type="button" aria-label="Notificaciones"><span>!</span></button>
+        </header>
+        <main class="content">
+          <section class="page-title">
+            <div><h1>Pagos</h1><p>Registra pagos por cliente y por cuota.</p></div>
+            <a class="ghost-button link-button" href="/prestamos.html">Ver prestamos</a>
+          </section>
+          <section class="single-module-grid compact-form-grid">
+            <article class="panel" id="paymentPanel">
+              <div class="panel-header"><h2>Registrar Pago</h2></div>
+              <form id="paymentForm" class="payment-form">
+                <label>Cliente<select id="paymentLoanSelect"></select></label>
+                <label>Cuota<select id="paymentInstallmentSelect"></select></label>
+                <label>Valor a pagar<input id="paymentAmount" type="number" min="1" step="1" required /></label>
+                <label>Fecha de pago<input id="paymentDate" type="date" required /></label>
+                <label>Metodo de pago<select id="paymentMethod"><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Daviplata</option></select></label>
+                <label>Observacion<input id="paymentNote" type="text" placeholder="Escribe una observacion..." /></label>
+                <button class="primary-button full-width" type="submit">Guardar pago</button>
+              </form>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <nav class="mobile-tabbar" aria-label="Navegacion movil">
+      <a href="/index.html">Inicio</a><a href="/clientes.html">Clientes</a><a href="/nuevo-prestamo.html">Nuevo</a><a class="active" href="/pagos.html">Pagos</a><a href="/prestamos.html">Mas</a>
+    </nav>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

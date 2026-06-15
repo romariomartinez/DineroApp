@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrestApp - Prestamos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="loans">
+    <div class="dashboard-layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand"><span class="brand-mark">P</span><strong>PrestApp</strong></div>
+        <nav class="side-nav" aria-label="Menu principal">
+          <span class="nav-label">MENU</span>
+          <a class="nav-item" href="/index.html"><span class="nav-icon">IN</span>Inicio</a>
+          <a class="nav-item" href="/clientes.html"><span class="nav-icon">CL</span>Clientes</a>
+          <a class="nav-item" href="/nuevo-prestamo.html"><span class="nav-icon">NP</span>Nuevo Prestamo</a>
+          <a class="nav-item active" href="/prestamos.html"><span class="nav-icon">PR</span>Prestamos</a>
+          <a class="nav-item" href="/pagos.html"><span class="nav-icon">PG</span>Pagos</a>
+          <a class="nav-item" href="/prestamos.html?filter=overdue"><span class="nav-icon">MO</span>Moras</a>
+          <a class="nav-item" href="/reportes.html"><span class="nav-icon">RP</span>Reportes</a>
+          <a class="nav-item" href="/configuracion.html"><span class="nav-icon">CF</span>Configuracion</a>
+        </nav>
+        <div class="admin-card"><span class="avatar">A</span><div><strong>Administrador</strong><small>admin@prestapp.com</small></div></div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu">&#9776;</button>
+          <label class="search-box"><input id="searchInput" type="search" placeholder="Buscar cliente..." /><span aria-hidden="true"></span></label>
+          <button class="notification-button" type="button" aria-label="Notificaciones"><span>!</span></button>
+        </header>
+        <main class="content">
+          <section class="page-title">
+            <div><h1>Prestamos</h1><p>Administra prestamos, cuotas, fechas y estados.</p></div>
+            <a class="primary-button link-button" href="/nuevo-prestamo.html">Nuevo prestamo</a>
+          </section>
+
+          <section class="module-stack">
+            <article class="panel table-panel" id="recentLoansPanel">
+              <div class="panel-header">
+                <h2>Prestamos registrados</h2>
+                <div class="filter-group" aria-label="Filtrar prestamos">
+                  <button class="filter-button active" type="button" data-filter="all">Todos</button>
+                  <button class="filter-button" type="button" data-filter="active">Activos</button>
+                  <button class="filter-button" type="button" data-filter="overdue">En mora</button>
+                  <button class="filter-button" type="button" data-filter="closed">Pagados</button>
+                </div>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cliente</th><th>Monto</th><th>%</th><th>Total a cobrar</th><th>Pagado</th><th>Saldo</th><th>Estado</th><th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentLoansBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="panel loan-detail-panel" id="loanDetailPanel">
+              <div class="panel-header">
+                <h2 id="selectedTitle">Cuotas del prestamo</h2>
+                <div class="header-actions">
+                  <button class="ghost-button" id="editSelectedLoanBtn" type="button">Editar</button>
+                  <a class="ghost-button link-button" href="/pagos.html">Registrar pago</a>
+                </div>
+              </div>
+              <div class="detail-summary" id="selectedSummary"></div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cuota</th><th>Fecha limite</th><th>Valor cuota</th><th>Estado</th><th>Fecha pago</th><th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="installmentsBody"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog class="edit-dialog" id="editLoanDialog">
+      <form id="editLoanForm" method="dialog">
+        <div class="dialog-header"><div><span>Editar</span><h2>Prestamo</h2></div><button class="icon-action" value="cancel" type="submit" aria-label="Cerrar">X</button></div>
+        <input id="editLoanId" type="hidden" />
+        <div class="form-row"><label>Cliente<input id="editBorrower" type="text" required /></label><label>Celular<input id="editPhone" type="tel" /></label></div>
+        <div class="form-row"><label>Monto prestado<input id="editAmount" type="number" min="1000" step="1000" required /></label><label>Porcentaje (%)<input id="editInterestRate" type="number" min="0" step="0.1" required /></label></div>
+        <div class="form-row"><label>Plazo<select id="editTermDays"><option value="30">30 dias</option><option value="45">45 dias</option><option value="60">60 dias</option></select></label><label>Forma de pago<select id="editPaymentFrequency"><option>Semanal</option><option>Quincenal</option><option>Mensual</option></select></label></div>
+        <div class="form-row"><label>Numero de cuotas<input id="editInstallmentsCount" type="number" min="1" max="24" step="1" required /></label><label>Inicio<input id="editStartDate" type="date" required /></label></div>
+        <div class="dialog-note">Al editar plazo, fecha o cuotas, el sistema recalcula el calendario y conserva el dinero ya pagado.</div>
+        <menu class="dialog-actions"><button class="ghost-button" value="cancel" type="submit">Cancelar</button><button class="primary-button" value="save" type="submit">Guardar cambios</button></menu>
+      </form>
+    </dialog>
+
+    <nav class="mobile-tabbar" aria-label="Navegacion movil">
+      <a href="/index.html">Inicio</a><a href="/clientes.html">Clientes</a><a href="/nuevo-prestamo.html">Nuevo</a><a href="/pagos.html">Pagos</a><a class="active" href="/prestamos.html">Mas</a>
+    </nav>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

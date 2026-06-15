@@ -118,6 +118,7 @@ button:disabled {
   font-size: 0.93rem;
   font-weight: 750;
   text-align: left;
+  text-decoration: none;
 }
 
 .nav-item:hover,
@@ -416,6 +417,26 @@ select:focus {
   margin-bottom: 22px;
 }
 
+.module-stack,
+.single-module-grid,
+.reports-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.single-module-grid {
+  grid-template-columns: minmax(320px, 720px);
+}
+
+.compact-form-grid {
+  grid-template-columns: minmax(300px, 460px);
+}
+
+.reports-grid {
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  align-items: start;
+}
+
 .panel {
   min-width: 0;
   padding: 18px;
@@ -534,6 +555,9 @@ td {
 .filter-button,
 .ghost-button,
 .primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 38px;
   border-radius: 8px;
   padding: 0 13px;
@@ -541,6 +565,11 @@ td {
   font-size: 0.84rem;
   font-weight: 850;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+.link-button {
+  width: fit-content;
 }
 
 .primary-button {
@@ -877,71 +906,6 @@ select {
   text-align: center;
 }
 
-body[data-active-module] .summary-grid,
-body[data-active-module] .mini-grid,
-body[data-active-module] .dashboard-grid,
-body[data-active-module] .work-grid,
-body[data-active-module] .lower-grid,
-body[data-active-module] .formula-strip,
-body[data-active-module] .settings-section {
-  display: none;
-}
-
-body[data-active-module="dashboard"] .summary-grid,
-body[data-active-module="dashboard"] .mini-grid {
-  display: grid;
-}
-
-body[data-active-module="dashboard"] .dashboard-grid {
-  display: grid;
-}
-
-body[data-active-module="loans"] .dashboard-grid,
-body[data-active-module="loans"] .work-grid,
-body[data-active-module="newLoan"] .work-grid,
-body[data-active-module="clients"] .lower-grid,
-body[data-active-module="payments"] .lower-grid,
-body[data-active-module="reports"] .lower-grid,
-body[data-active-module="reports"] .formula-strip,
-body[data-active-module="settings"] .settings-section {
-  display: grid;
-}
-
-body[data-active-module="loans"] .dashboard-grid,
-body[data-active-module="loans"] .work-grid,
-body[data-active-module="newLoan"] .work-grid,
-body[data-active-module="clients"] .lower-grid,
-body[data-active-module="payments"] .lower-grid,
-body[data-active-module="reports"] .lower-grid {
-  grid-template-columns: 1fr;
-}
-
-body[data-active-module="dashboard"] #loanDetailPanel,
-body[data-active-module="newLoan"] #loanDetailPanel,
-body[data-active-module="loans"] #newLoanPanel,
-body[data-active-module="loans"] .chart-panel,
-body[data-active-module="clients"] #paymentPanel,
-body[data-active-module="clients"] #exportPanel,
-body[data-active-module="payments"] #clientsPanel,
-body[data-active-module="payments"] #exportPanel,
-body[data-active-module="reports"] #clientsPanel,
-body[data-active-module="reports"] #paymentPanel {
-  display: none;
-}
-
-body[data-active-module="newLoan"] #newLoanPanel,
-body[data-active-module="loans"] #recentLoansPanel,
-body[data-active-module="loans"] #loanDetailPanel,
-body[data-active-module="clients"] #clientsPanel,
-body[data-active-module="payments"] #paymentPanel,
-body[data-active-module="reports"] #exportPanel {
-  min-height: calc(100vh - 150px);
-}
-
-body[data-active-module="dashboard"] #recentLoansPanel {
-  min-height: 300px;
-}
-
 .settings-section {
   min-height: calc(100vh - 150px);
 }
@@ -1041,7 +1005,9 @@ body[data-active-module="dashboard"] #recentLoansPanel {
 
   .dashboard-grid,
   .work-grid,
-  .lower-grid {
+  .lower-grid,
+  .single-module-grid,
+  .reports-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1113,16 +1079,21 @@ body[data-active-module="dashboard"] #recentLoansPanel {
     backdrop-filter: blur(14px);
   }
 
-  .mobile-tabbar button {
+  .mobile-tabbar button,
+  .mobile-tabbar a {
+    display: grid;
+    place-items: center;
     border: 0;
     border-radius: 8px;
     background: transparent;
     color: #60708c;
     font-size: 0.73rem;
     font-weight: 850;
+    text-decoration: none;
   }
 
-  .mobile-tabbar button.active {
+  .mobile-tabbar button.active,
+  .mobile-tabbar a.active {
     color: var(--purple);
     background: #eff2ff;
   }
@@ -1134,7 +1105,10 @@ body[data-active-module="dashboard"] #recentLoansPanel {
   .form-row,
   .chart-content,
   .formula-strip,
-  .detail-summary {
+  .detail-summary,
+  .single-module-grid,
+  .reports-grid,
+  .settings-grid {
     grid-template-columns: 1fr;
   }
 

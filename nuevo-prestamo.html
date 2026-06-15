@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrestApp - Nuevo Prestamo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="new-loan">
+    <div class="dashboard-layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand"><span class="brand-mark">P</span><strong>PrestApp</strong></div>
+        <nav class="side-nav" aria-label="Menu principal">
+          <span class="nav-label">MENU</span>
+          <a class="nav-item" href="/index.html"><span class="nav-icon">IN</span>Inicio</a>
+          <a class="nav-item" href="/clientes.html"><span class="nav-icon">CL</span>Clientes</a>
+          <a class="nav-item active" href="/nuevo-prestamo.html"><span class="nav-icon">NP</span>Nuevo Prestamo</a>
+          <a class="nav-item" href="/prestamos.html"><span class="nav-icon">PR</span>Prestamos</a>
+          <a class="nav-item" href="/pagos.html"><span class="nav-icon">PG</span>Pagos</a>
+          <a class="nav-item" href="/prestamos.html?filter=overdue"><span class="nav-icon">MO</span>Moras</a>
+          <a class="nav-item" href="/reportes.html"><span class="nav-icon">RP</span>Reportes</a>
+          <a class="nav-item" href="/configuracion.html"><span class="nav-icon">CF</span>Configuracion</a>
+        </nav>
+        <div class="admin-card"><span class="avatar">A</span><div><strong>Administrador</strong><small>admin@prestapp.com</small></div></div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu">&#9776;</button>
+          <label class="search-box"><input id="searchInput" type="search" placeholder="Buscar cliente..." /><span aria-hidden="true"></span></label>
+          <button class="notification-button" type="button" aria-label="Notificaciones"><span>!</span></button>
+        </header>
+        <main class="content">
+          <section class="page-title">
+            <div><h1>Nuevo Prestamo</h1><p>Registra el cliente, calcula ganancia y crea cuotas.</p></div>
+            <a class="ghost-button link-button" href="/prestamos.html">Ver prestamos</a>
+          </section>
+
+          <section class="single-module-grid">
+            <article class="panel">
+              <div class="panel-header"><h2>Datos del prestamo</h2></div>
+              <form id="loanForm" class="loan-form">
+                <div class="form-row"><label>Cliente<input id="borrower" name="borrower" type="text" placeholder="Juan Perez" required /></label><label>Celular<input id="phone" name="phone" type="tel" placeholder="3001234567" /></label></div>
+                <div class="form-row"><label>Monto prestado<input id="amount" name="amount" type="number" min="1000" step="1000" value="500000" required /></label><label>Porcentaje (%)<input id="interestRate" name="interestRate" type="number" min="0" step="0.1" value="10" required /></label></div>
+                <div class="form-row"><label>Plazo<select id="termDays" name="termDays"><option value="30">30 dias</option><option value="45" selected>45 dias</option><option value="60">60 dias</option></select></label><label>Forma de pago<select id="paymentFrequency" name="paymentFrequency"><option>Semanal</option><option selected>Quincenal</option><option>Mensual</option></select></label></div>
+                <div class="form-row"><label>Numero de cuotas<input id="installmentsCount" name="installmentsCount" type="number" min="1" max="24" step="1" value="4" required /></label><label>Inicio<input id="startDate" name="startDate" type="date" required /></label></div>
+                <div class="calculation-box">
+                  <div><span>Ganancia</span><strong class="green-text" id="previewInterest">$50.000</strong></div>
+                  <div><span>Total a cobrar</span><strong class="blue-text" id="previewTotal">$550.000</strong></div>
+                  <div><span>Numero de cuotas</span><strong id="previewCount">4</strong></div>
+                  <div class="wide"><span>Valor de cada cuota</span><strong id="previewInstallment">$137.500</strong></div>
+                </div>
+                <button class="primary-button full-width" type="submit">Guardar prestamo</button>
+              </form>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <nav class="mobile-tabbar" aria-label="Navegacion movil">
+      <a href="/index.html">Inicio</a><a href="/clientes.html">Clientes</a><a class="active" href="/nuevo-prestamo.html">Nuevo</a><a href="/pagos.html">Pagos</a><a href="/prestamos.html">Mas</a>
+    </nav>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

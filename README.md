@@ -2,6 +2,18 @@
 
 Sistema web responsive para administrar prestamos, clientes, cuotas, pagos y reportes.
 
+## Modulos
+
+La app esta separada en paginas reales:
+
+- `index.html`: Dashboard.
+- `prestamos.html`: prestamos y cuotas.
+- `nuevo-prestamo.html`: formulario de nuevo prestamo.
+- `clientes.html`: clientes.
+- `pagos.html`: registro de pagos.
+- `reportes.html`: exportacion y formulas.
+- `configuracion.html`: configuracion del sistema.
+
 ## Supabase
 
 1. Crea un proyecto en Supabase.
