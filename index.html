@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrestApp - Control de prestamos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="dashboard-layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <span class="brand-mark">P</span>
+          <strong>PrestApp</strong>
+        </div>
+
+        <nav class="side-nav" aria-label="Menu principal">
+          <span class="nav-label">MENU</span>
+          <button class="nav-item active" type="button" data-jump="dashboard">
+            <span class="nav-icon">IN</span>
+            Inicio
+          </button>
+          <button class="nav-item" type="button" data-jump="clientsPanel">
+            <span class="nav-icon">CL</span>
+            Clientes
+          </button>
+          <button class="nav-item" type="button" data-jump="newLoanPanel">
+            <span class="nav-icon">NP</span>
+            Nuevo Prestamo
+          </button>
+          <button class="nav-item" type="button" data-jump="recentLoansPanel">
+            <span class="nav-icon">PR</span>
+            Prestamos
+          </button>
+          <button class="nav-item" type="button" data-jump="paymentPanel">
+            <span class="nav-icon">PG</span>
+            Pagos
+          </button>
+          <button class="nav-item" type="button" data-filter-jump="overdue">
+            <span class="nav-icon">MO</span>
+            Moras
+          </button>
+          <button class="nav-item" type="button" data-jump="formulaPanel">
+            <span class="nav-icon">RP</span>
+            Reportes
+          </button>
+          <button class="nav-item" type="button" id="sidebarExportBtn">
+            <span class="nav-icon">EX</span>
+            Exportar Excel
+          </button>
+        </nav>
+
+        <div class="admin-card">
+          <span class="avatar">A</span>
+          <div>
+            <strong>Administrador</strong>
+            <small>admin@prestapp.com</small>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu">&#9776;</button>
+          <label class="search-box">
+            <input id="searchInput" type="search" placeholder="Buscar cliente..." />
+            <span aria-hidden="true"></span>
+          </label>
+          <button class="notification-button" type="button" aria-label="Notificaciones">
+            <span>!</span>
+          </button>
+        </header>
+
+        <main class="content" id="dashboard">
+          <section class="page-title">
+            <div>
+              <h1>Dashboard</h1>
+              <p>Bienvenido, Administrador</p>
+            </div>
+            <button class="primary-button" type="button" data-jump="newLoanPanel">Nuevo prestamo</button>
+          </section>
+
+          <section class="summary-grid" aria-label="Resumen financiero">
+            <article class="summary-card">
+              <span class="card-icon purple">CP</span>
+              <div>
+                <p>Capital prestado</p>
+                <strong id="metricCapital">$0</strong>
+                <small>Total prestado</small>
+              </div>
+            </article>
+            <article class="summary-card">
+              <span class="card-icon green">GE</span>
+              <div>
+                <p>Ganancia esperada</p>
+                <strong id="metricInterest">$0</strong>
+                <small>Total a ganar</small>
+              </div>
+            </article>
+            <article class="summary-card">
+              <span class="card-icon blue">DR</span>
+              <div>
+                <p>Dinero recuperado</p>
+                <strong id="metricPaid">$0</strong>
+                <small>Total recuperado</small>
+              </div>
+            </article>
+            <article class="summary-card">
+              <span class="card-icon orange">SP</span>
+              <div>
+                <p>Saldo pendiente</p>
+                <strong id="metricPending">$0</strong>
+                <small>Por recuperar</small>
+              </div>
+            </article>
+          </section>
+
+          <section class="mini-grid" aria-label="Indicadores de cartera">
+            <article class="mini-card">
+              <span class="mini-icon blue">AC</span>
+              <div>
+                <p>Prestamos activos</p>
+                <strong id="metricActive">0</strong>
+                <small>Prestamos</small>
+              </div>
+            </article>
+            <article class="mini-card">
+              <span class="mini-icon red">MO</span>
+              <div>
+                <p>Clientes en mora</p>
+                <strong id="metricOverdue">0</strong>
+                <small>Clientes</small>
+              </div>
+            </article>
+            <article class="mini-card">
+              <span class="mini-icon slate">PV</span>
+              <div>
+                <p>Proximos a vencer</p>
+                <strong id="metricUpcoming">0</strong>
+                <small>Proximos 7 dias</small>
+              </div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="panel table-panel" id="recentLoansPanel">
+              <div class="panel-header">
+                <h2>Prestamos recientes</h2>
+                <div class="filter-group" aria-label="Filtrar prestamos">
+                  <button class="filter-button active" type="button" data-filter="all">Todos</button>
+                  <button class="filter-button" type="button" data-filter="active">Activos</button>
+                  <button class="filter-button" type="button" data-filter="overdue">En mora</button>
+                  <button class="filter-button" type="button" data-filter="closed">Pagados</button>
+                </div>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Monto</th>
+                      <th>%</th>
+                      <th>Total a cobrar</th>
+                      <th>Pagado</th>
+                      <th>Saldo</th>
+                      <th>Estado</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentLoansBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="panel chart-panel">
+              <div class="panel-header">
+                <h2>Grafico de estado</h2>
+              </div>
+              <div class="chart-content">
+                <div class="donut-chart" id="chartDonut">
+                  <div>
+                    <span>Total</span>
+                    <strong id="chartTotal">0</strong>
+                    <small>Prestamos</small>
+                  </div>
+                </div>
+                <div class="legend-list">
+                  <div><span class="legend-dot paid"></span><p>Pagados <strong id="legendPaid">0 (0%)</strong></p></div>
+                  <div><span class="legend-dot active"></span><p>Activos <strong id="legendActive">0 (0%)</strong></p></div>
+                  <div><span class="legend-dot overdue"></span><p>En mora <strong id="legendOverdue">0 (0%)</strong></p></div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="work-grid">
+            <article class="panel" id="newLoanPanel">
+              <div class="panel-header">
+                <h2>Nuevo Prestamo</h2>
+              </div>
+              <form id="loanForm" class="loan-form">
+                <div class="form-row">
+                  <label>
+                    Cliente
+                    <input id="borrower" name="borrower" type="text" placeholder="Juan Perez" required />
+                  </label>
+                  <label>
+                    Celular
+                    <input id="phone" name="phone" type="tel" placeholder="3001234567" />
+                  </label>
+                </div>
+
+                <div class="form-row">
+                  <label>
+                    Monto prestado
+                    <input id="amount" name="amount" type="number" min="1000" step="1000" value="500000" required />
+                  </label>
+                  <label>
+                    Porcentaje (%)
+                    <input id="interestRate" name="interestRate" type="number" min="0" step="0.1" value="10" required />
+                  </label>
+                </div>
+
+                <div class="form-row">
+                  <label>
+                    Plazo
+                    <select id="termDays" name="termDays">
+                      <option value="30">30 dias</option>
+                      <option value="45" selected>45 dias</option>
+                      <option value="60">60 dias</option>
+                    </select>
+                  </label>
+                  <label>
+                    Forma de pago
+                    <select id="paymentFrequency" name="paymentFrequency">
+                      <option>Semanal</option>
+                      <option selected>Quincenal</option>
+                      <option>Mensual</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="form-row">
+                  <label>
+                    Numero de cuotas
+                    <input id="installmentsCount" name="installmentsCount" type="number" min="1" max="24" step="1" value="4" required />
+                  </label>
+                  <label>
+                    Inicio
+                    <input id="startDate" name="startDate" type="date" required />
+                  </label>
+                </div>
+
+                <div class="calculation-box">
+                  <div>
+                    <span>Ganancia</span>
+                    <strong class="green-text" id="previewInterest">$50.000</strong>
+                  </div>
+                  <div>
+                    <span>Total a cobrar</span>
+                    <strong class="blue-text" id="previewTotal">$550.000</strong>
+                  </div>
+                  <div>
+                    <span>Numero de cuotas</span>
+                    <strong id="previewCount">4</strong>
+                  </div>
+                  <div class="wide">
+                    <span>Valor de cada cuota</span>
+                    <strong id="previewInstallment">$137.500</strong>
+                  </div>
+                </div>
+
+                <button class="primary-button full-width" type="submit">Guardar prestamo</button>
+              </form>
+            </article>
+
+            <article class="panel loan-detail-panel" id="loanDetailPanel">
+              <div class="panel-header">
+                <h2 id="selectedTitle">Cuotas del prestamo</h2>
+                <div class="header-actions">
+                  <button class="ghost-button" id="editSelectedLoanBtn" type="button">Editar</button>
+                  <button class="ghost-button" type="button" data-jump="recentLoansPanel">Volver</button>
+                </div>
+              </div>
+              <div class="detail-summary" id="selectedSummary"></div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cuota</th>
+                      <th>Fecha limite</th>
+                      <th>Valor cuota</th>
+                      <th>Estado</th>
+                      <th>Fecha pago</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="installmentsBody"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          <section class="lower-grid">
+            <article class="panel table-panel" id="clientsPanel">
+              <div class="panel-header">
+                <h2>Clientes</h2>
+                <button class="primary-button small-button" type="button" data-jump="newLoanPanel">Nuevo cliente</button>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Celular</th>
+                      <th>Prestamos</th>
+                      <th>Total prestado</th>
+                      <th>Total pendiente</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="clientsBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="panel" id="paymentPanel">
+              <div class="panel-header">
+                <h2>Registrar Pago</h2>
+              </div>
+              <form id="paymentForm" class="payment-form">
+                <label>
+                  Cliente
+                  <select id="paymentLoanSelect"></select>
+                </label>
+                <label>
+                  Cuota
+                  <select id="paymentInstallmentSelect"></select>
+                </label>
+                <label>
+                  Valor a pagar
+                  <input id="paymentAmount" type="number" min="1" step="1" required />
+                </label>
+                <label>
+                  Fecha de pago
+                  <input id="paymentDate" type="date" required />
+                </label>
+                <label>
+                  Metodo de pago
+                  <select id="paymentMethod">
+                    <option>Efectivo</option>
+                    <option>Transferencia</option>
+                    <option>Nequi</option>
+                    <option>Daviplata</option>
+                  </select>
+                </label>
+                <label>
+                  Observacion
+                  <input id="paymentNote" type="text" placeholder="Escribe una observacion..." />
+                </label>
+                <button class="primary-button full-width" type="submit">Guardar pago</button>
+              </form>
+            </article>
+
+            <article class="panel export-panel" id="exportPanel">
+              <div class="panel-header">
+                <h2>Exportar a Excel</h2>
+              </div>
+              <p>Descarga el reporte de todos los clientes y prestamos.</p>
+              <div class="excel-art">X</div>
+              <label>
+                Que quieres exportar?
+                <select id="exportType">
+                  <option>Todos los prestamos</option>
+                  <option>Solo activos</option>
+                  <option>Solo en mora</option>
+                  <option>Solo pagados</option>
+                </select>
+              </label>
+              <button class="primary-button full-width" id="exportBtn" type="button">Exportar Excel</button>
+            </article>
+          </section>
+
+          <section class="formula-strip" id="formulaPanel">
+            <div>
+              <strong>FORMULA EJEMPLO</strong>
+              <span>Si prestas <b>$500.000</b> al 10% a 45 dias</span>
+            </div>
+            <span class="formula-arrow">-&gt;</span>
+            <div>
+              <small>Ganancia</small>
+              <strong>$500.000 x 10% = $50.000</strong>
+            </div>
+            <span class="formula-arrow">-&gt;</span>
+            <div>
+              <small>Total a cobrar</small>
+              <strong>$550.000</strong>
+            </div>
+            <span class="formula-arrow">-&gt;</span>
+            <div>
+              <small>Valor cuota (4 cuotas)</small>
+              <strong>$137.500</strong>
+            </div>
+            <div class="formula-options">
+              <small>PLAZOS DISPONIBLES</small>
+              <span>30 dias</span>
+              <span>45 dias</span>
+              <span>60 dias</span>
+            </div>
+            <div class="formula-options">
+              <small>FORMAS DE PAGO</small>
+              <span>Semanal</span>
+              <span>Quincenal</span>
+              <span>Mensual</span>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <nav class="mobile-tabbar" aria-label="Navegacion movil">
+      <button class="active" type="button" data-jump="dashboard">Inicio</button>
+      <button type="button" data-jump="clientsPanel">Clientes</button>
+      <button type="button" data-jump="newLoanPanel">Nuevo</button>
+      <button type="button" data-jump="paymentPanel">Pagos</button>
+      <button type="button" data-jump="recentLoansPanel">Mas</button>
+    </nav>
+
+    <dialog class="edit-dialog" id="editLoanDialog">
+      <form id="editLoanForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <span>Editar</span>
+            <h2>Prestamo</h2>
+          </div>
+          <button class="icon-action" value="cancel" type="submit" aria-label="Cerrar">X</button>
+        </div>
+
+        <input id="editLoanId" type="hidden" />
+
+        <div class="form-row">
+          <label>
+            Cliente
+            <input id="editBorrower" type="text" required />
+          </label>
+          <label>
+            Celular
+            <input id="editPhone" type="tel" />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Monto prestado
+            <input id="editAmount" type="number" min="1000" step="1000" required />
+          </label>
+          <label>
+            Porcentaje (%)
+            <input id="editInterestRate" type="number" min="0" step="0.1" required />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Plazo
+            <select id="editTermDays">
+              <option value="30">30 dias</option>
+              <option value="45">45 dias</option>
+              <option value="60">60 dias</option>
+            </select>
+          </label>
+          <label>
+            Forma de pago
+            <select id="editPaymentFrequency">
+              <option>Semanal</option>
+              <option>Quincenal</option>
+              <option>Mensual</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Numero de cuotas
+            <input id="editInstallmentsCount" type="number" min="1" max="24" step="1" required />
+          </label>
+          <label>
+            Inicio
+            <input id="editStartDate" type="date" required />
+          </label>
+        </div>
+
+        <div class="dialog-note">
+          Al editar plazo, fecha o cuotas, el sistema recalcula el calendario y conserva el dinero ya pagado.
+        </div>
+
+        <menu class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit">Cancelar</button>
+          <button class="primary-button" value="save" type="submit">Guardar cambios</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
