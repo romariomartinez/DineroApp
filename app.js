@@ -229,8 +229,8 @@ function setAuthMode(mode) {
   q("authSubmit").textContent = isBootstrap ? "Crear super usuario" : "Entrar";
   q("authPassword").autocomplete = isBootstrap ? "new-password" : "current-password";
   q("authHint").textContent = isBootstrap
-    ? "Crea el primer super usuario para administrar PrestApp."
-    : "Ingresa con tu usuario y clave para ver tu cartera privada.";
+    ? "Solo primera vez: crea el admin. Desactiva confirmacion de email en Supabase."
+    : "Entra con un usuario ya creado. Si es primera vez, usa Crear super usuario.";
 }
 
 async function handleAuthSubmit(event) {
@@ -248,6 +248,12 @@ async function handleAuthSubmit(event) {
   if (submitButton) submitButton.disabled = true;
   try {
     const email = emailForUsername(username);
+    if (mode === "bootstrap") {
+      const { data: hasProfiles, error: profileCheckError } = await supabase.rpc("has_profiles");
+      if (profileCheckError) throw profileCheckError;
+      if (hasProfiles) throw new Error("Ya existe un super usuario. Usa Entrar.");
+    }
+
     const response =
       mode === "bootstrap"
         ? await supabase.auth.signUp({ email, password })
@@ -1509,6 +1515,10 @@ function getSupabaseErrorMessage(error) {
   if (isMissingSupabaseTable(error)) return "Faltan tablas en Supabase: ejecuta supabase/schema.sql";
   if (isMissingUserColumn(error)) return "Falta actualizar Supabase: ejecuta supabase/schema.sql";
   if (isMissingProfilesSetup(error)) return "Falta actualizar usuarios: ejecuta supabase/schema.sql";
+  if (isInvalidLogin(error)) return "Usuario o clave incorrectos. Si es primera vez, toca Crear super usuario.";
+  if (isEmailRateLimit(error)) return "Supabase bloqueo intentos por unos minutos. Desactiva confirmacion de email y espera antes de intentar.";
+  if (isEmailConfirmationRequired(error)) return "Desactiva confirmacion de email en Supabase y vuelve a crear el usuario.";
+  if (isUserAlreadyRegistered(error)) return "Ese usuario ya existe. Entra con su clave o crea otro usuario.";
   if (error?.message) return `Supabase: ${error.message}`;
   return "Supabase no respondio; usando respaldo local";
 }
@@ -1526,6 +1536,29 @@ function isMissingUserColumn(error) {
 function isMissingProfilesSetup(error) {
   const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
   return text.includes("profiles") || text.includes("has_profiles");
+}
+
+function isInvalidLogin(error) {
+  return getErrorText(error).includes("invalid login credentials");
+}
+
+function isEmailRateLimit(error) {
+  const text = getErrorText(error);
+  return text.includes("email rate limit") || text.includes("rate limit exceeded");
+}
+
+function isEmailConfirmationRequired(error) {
+  const text = getErrorText(error);
+  return text.includes("email not confirmed") || text.includes("confirm");
+}
+
+function isUserAlreadyRegistered(error) {
+  const text = getErrorText(error);
+  return text.includes("user already registered") || text.includes("already exists") || text.includes("ya existe");
+}
+
+function getErrorText(error) {
+  return `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`.toLowerCase();
 }
 
 function numberFrom(value) {

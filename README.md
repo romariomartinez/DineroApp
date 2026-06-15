@@ -60,6 +60,8 @@ En Supabase:
 3. En `Authentication > URL Configuration`, pon la URL de Vercel como `Site URL` y agregala tambien en `Redirect URLs`.
 4. Ejecuta `supabase/schema.sql`.
 
+Si sale `email rate limit exceeded`, espera unos minutos, confirma que la verificacion de email este desactivada y vuelve a intentar una sola vez.
+
 Para crear el primer administrador:
 
 1. Abre `login.html`.
