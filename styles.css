@@ -877,6 +877,107 @@ select {
   text-align: center;
 }
 
+body[data-active-module] .summary-grid,
+body[data-active-module] .mini-grid,
+body[data-active-module] .dashboard-grid,
+body[data-active-module] .work-grid,
+body[data-active-module] .lower-grid,
+body[data-active-module] .formula-strip,
+body[data-active-module] .settings-section {
+  display: none;
+}
+
+body[data-active-module="dashboard"] .summary-grid,
+body[data-active-module="dashboard"] .mini-grid {
+  display: grid;
+}
+
+body[data-active-module="dashboard"] .dashboard-grid {
+  display: grid;
+}
+
+body[data-active-module="loans"] .dashboard-grid,
+body[data-active-module="loans"] .work-grid,
+body[data-active-module="newLoan"] .work-grid,
+body[data-active-module="clients"] .lower-grid,
+body[data-active-module="payments"] .lower-grid,
+body[data-active-module="reports"] .lower-grid,
+body[data-active-module="reports"] .formula-strip,
+body[data-active-module="settings"] .settings-section {
+  display: grid;
+}
+
+body[data-active-module="loans"] .dashboard-grid,
+body[data-active-module="loans"] .work-grid,
+body[data-active-module="newLoan"] .work-grid,
+body[data-active-module="clients"] .lower-grid,
+body[data-active-module="payments"] .lower-grid,
+body[data-active-module="reports"] .lower-grid {
+  grid-template-columns: 1fr;
+}
+
+body[data-active-module="dashboard"] #loanDetailPanel,
+body[data-active-module="newLoan"] #loanDetailPanel,
+body[data-active-module="loans"] #newLoanPanel,
+body[data-active-module="loans"] .chart-panel,
+body[data-active-module="clients"] #paymentPanel,
+body[data-active-module="clients"] #exportPanel,
+body[data-active-module="payments"] #clientsPanel,
+body[data-active-module="payments"] #exportPanel,
+body[data-active-module="reports"] #clientsPanel,
+body[data-active-module="reports"] #paymentPanel {
+  display: none;
+}
+
+body[data-active-module="newLoan"] #newLoanPanel,
+body[data-active-module="loans"] #recentLoansPanel,
+body[data-active-module="loans"] #loanDetailPanel,
+body[data-active-module="clients"] #clientsPanel,
+body[data-active-module="payments"] #paymentPanel,
+body[data-active-module="reports"] #exportPanel {
+  min-height: calc(100vh - 150px);
+}
+
+body[data-active-module="dashboard"] #recentLoansPanel {
+  min-height: 300px;
+}
+
+.settings-section {
+  min-height: calc(100vh - 150px);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-grid div {
+  display: grid;
+  gap: 6px;
+  min-height: 132px;
+  align-content: center;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.settings-grid span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.settings-grid strong {
+  font-size: 1.05rem;
+}
+
+.settings-grid small {
+  color: #74829b;
+  line-height: 1.4;
+}
+
 .edit-dialog {
   width: min(620px, calc(100% - 28px));
   border: 0;

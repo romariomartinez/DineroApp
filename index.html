@@ -6,7 +6,7 @@
     <title>PrestApp - Control de prestamos</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-active-module="dashboard">
     <div class="dashboard-layout">
       <aside class="sidebar" id="sidebar">
         <div class="brand">
@@ -16,37 +16,41 @@
 
         <nav class="side-nav" aria-label="Menu principal">
           <span class="nav-label">MENU</span>
-          <button class="nav-item active" type="button" data-jump="dashboard">
+          <button class="nav-item active" type="button" data-module="dashboard">
             <span class="nav-icon">IN</span>
             Inicio
           </button>
-          <button class="nav-item" type="button" data-jump="clientsPanel">
+          <button class="nav-item" type="button" data-module="clients">
             <span class="nav-icon">CL</span>
             Clientes
           </button>
-          <button class="nav-item" type="button" data-jump="newLoanPanel">
+          <button class="nav-item" type="button" data-module="newLoan">
             <span class="nav-icon">NP</span>
             Nuevo Prestamo
           </button>
-          <button class="nav-item" type="button" data-jump="recentLoansPanel">
+          <button class="nav-item" type="button" data-module="loans">
             <span class="nav-icon">PR</span>
             Prestamos
           </button>
-          <button class="nav-item" type="button" data-jump="paymentPanel">
+          <button class="nav-item" type="button" data-module="payments">
             <span class="nav-icon">PG</span>
             Pagos
           </button>
-          <button class="nav-item" type="button" data-filter-jump="overdue">
+          <button class="nav-item" type="button" data-module-filter="overdue">
             <span class="nav-icon">MO</span>
             Moras
           </button>
-          <button class="nav-item" type="button" data-jump="formulaPanel">
+          <button class="nav-item" type="button" data-module="reports">
             <span class="nav-icon">RP</span>
             Reportes
           </button>
-          <button class="nav-item" type="button" id="sidebarExportBtn">
+          <button class="nav-item" type="button" id="sidebarExportBtn" data-module="reports">
             <span class="nav-icon">EX</span>
             Exportar Excel
+          </button>
+          <button class="nav-item" type="button" data-module="settings">
+            <span class="nav-icon">CF</span>
+            Configuracion
           </button>
         </nav>
 
@@ -74,10 +78,10 @@
         <main class="content" id="dashboard">
           <section class="page-title">
             <div>
-              <h1>Dashboard</h1>
-              <p>Bienvenido, Administrador</p>
+              <h1 id="moduleTitle">Dashboard</h1>
+              <p id="moduleSubtitle">Bienvenido, Administrador</p>
             </div>
-            <button class="primary-button" type="button" data-jump="newLoanPanel">Nuevo prestamo</button>
+            <button class="primary-button" id="moduleActionBtn" type="button" data-module="newLoan">Nuevo prestamo</button>
           </section>
 
           <section class="summary-grid" aria-label="Resumen financiero">
@@ -415,16 +419,39 @@
               <span>Mensual</span>
             </div>
           </section>
+
+          <section class="settings-section panel" id="settingsPanel">
+            <div class="panel-header">
+              <h2>Configuracion</h2>
+            </div>
+            <div class="settings-grid">
+              <div>
+                <span>Base de datos</span>
+                <strong>Supabase</strong>
+                <small>Los datos se guardan en Supabase cuando las tablas estan creadas.</small>
+              </div>
+              <div>
+                <span>Plazos activos</span>
+                <strong>30, 45 y 60 dias</strong>
+                <small>Se pueden editar desde cada prestamo.</small>
+              </div>
+              <div>
+                <span>Respaldo local</span>
+                <strong>Activado</strong>
+                <small>Si Supabase falla, el navegador conserva una copia temporal.</small>
+              </div>
+            </div>
+          </section>
         </main>
       </div>
     </div>
 
     <nav class="mobile-tabbar" aria-label="Navegacion movil">
-      <button class="active" type="button" data-jump="dashboard">Inicio</button>
-      <button type="button" data-jump="clientsPanel">Clientes</button>
-      <button type="button" data-jump="newLoanPanel">Nuevo</button>
-      <button type="button" data-jump="paymentPanel">Pagos</button>
-      <button type="button" data-jump="recentLoansPanel">Mas</button>
+      <button class="active" type="button" data-module="dashboard">Inicio</button>
+      <button type="button" data-module="clients">Clientes</button>
+      <button type="button" data-module="newLoan">Nuevo</button>
+      <button type="button" data-module="payments">Pagos</button>
+      <button type="button" data-module="loans">Mas</button>
     </nav>
 
     <dialog class="edit-dialog" id="editLoanDialog">

@@ -25,6 +25,9 @@ const todayIso = toIsoDate(new Date());
 const elements = {
   sidebar: byId("sidebar"),
   menuToggle: byId("menuToggle"),
+  moduleTitle: byId("moduleTitle"),
+  moduleSubtitle: byId("moduleSubtitle"),
+  moduleActionBtn: byId("moduleActionBtn"),
   searchInput: byId("searchInput"),
   loanForm: byId("loanForm"),
   borrower: byId("borrower"),
@@ -57,6 +60,51 @@ const elements = {
   toast: byId("toast"),
 };
 
+const moduleConfig = {
+  dashboard: {
+    title: "Dashboard",
+    subtitle: "Resumen general de cartera y estado del negocio",
+    actionLabel: "Nuevo prestamo",
+    actionModule: "newLoan",
+  },
+  loans: {
+    title: "Prestamos",
+    subtitle: "Administra prestamos, cuotas, fechas y estados",
+    actionLabel: "Nuevo prestamo",
+    actionModule: "newLoan",
+  },
+  newLoan: {
+    title: "Nuevo prestamo",
+    subtitle: "Registra un cliente, calcula ganancia y crea el calendario de cuotas",
+    actionLabel: "Ver prestamos",
+    actionModule: "loans",
+  },
+  clients: {
+    title: "Clientes",
+    subtitle: "Consulta, revisa y elimina clientes de la cartera",
+    actionLabel: "Nuevo cliente",
+    actionModule: "newLoan",
+  },
+  payments: {
+    title: "Pagos",
+    subtitle: "Registra pagos por cliente y por cuota",
+    actionLabel: "Ver prestamos",
+    actionModule: "loans",
+  },
+  reports: {
+    title: "Reportes",
+    subtitle: "Exporta datos y revisa formulas de cobro",
+    actionLabel: "Exportar Excel",
+    actionModule: "",
+  },
+  settings: {
+    title: "Configuracion",
+    subtitle: "Estado de base de datos, plazos y respaldo local",
+    actionLabel: "Ir al dashboard",
+    actionModule: "dashboard",
+  },
+};
+
 let state = loadState();
 let activeFilter = "all";
 let selectedLoanId = state.loans[0]?.id || "";
@@ -68,22 +116,34 @@ elements.paymentDate.value = todayIso;
 
 renderAll();
 updatePreview();
+setActiveModule("dashboard");
 loadRemoteState();
 
 elements.menuToggle.addEventListener("click", () => {
   document.body.classList.toggle("sidebar-open");
 });
 
+elements.moduleActionBtn.addEventListener("click", () => {
+  if (document.body.dataset.activeModule === "reports") {
+    exportCsv();
+  }
+});
+
 document.addEventListener("click", (event) => {
+  const moduleButton = event.target.closest("[data-module]");
+  if (moduleButton) {
+    setActiveModule(moduleButton.dataset.module);
+  }
+
   const jumpButton = event.target.closest("[data-jump]");
   if (jumpButton) {
     jumpTo(jumpButton.dataset.jump);
   }
 
-  const filterJump = event.target.closest("[data-filter-jump]");
+  const filterJump = event.target.closest("[data-module-filter]");
   if (filterJump) {
-    setFilter(filterJump.dataset.filterJump);
-    jumpTo("recentLoansPanel");
+    setFilter(filterJump.dataset.moduleFilter);
+    setActiveModule("loans");
   }
 });
 
@@ -173,7 +233,7 @@ elements.editLoanForm.addEventListener("submit", (event) => {
 });
 
 byId("exportBtn").addEventListener("click", exportCsv);
-byId("sidebarExportBtn").addEventListener("click", exportCsv);
+byId("sidebarExportBtn").addEventListener("click", () => setActiveModule("reports"));
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -1091,17 +1151,52 @@ function setFilter(filter) {
 }
 
 function jumpTo(id) {
+  const module = getModuleForTarget(id);
+  if (module) {
+    setActiveModule(module);
+  }
+
   const target = byId(id);
   if (!target) return;
   target.scrollIntoView({ behavior: "smooth", block: "start" });
   document.body.classList.remove("sidebar-open");
-  setActiveNavigation(id);
 }
 
-function setActiveNavigation(id) {
-  document.querySelectorAll(".nav-item[data-jump], .mobile-tabbar button").forEach((button) => {
-    button.classList.toggle("active", button.dataset.jump === id);
+function setActiveModule(module) {
+  const config = moduleConfig[module] || moduleConfig.dashboard;
+  document.body.dataset.activeModule = moduleConfig[module] ? module : "dashboard";
+  elements.moduleTitle.textContent = config.title;
+  elements.moduleSubtitle.textContent = config.subtitle;
+  elements.moduleActionBtn.textContent = config.actionLabel;
+
+  if (config.actionModule) {
+    elements.moduleActionBtn.dataset.module = config.actionModule;
+  } else {
+    delete elements.moduleActionBtn.dataset.module;
+  }
+
+  document.querySelectorAll(".nav-item[data-module], .mobile-tabbar button[data-module]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.module === document.body.dataset.activeModule);
   });
+
+  document.body.classList.remove("sidebar-open");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function getModuleForTarget(id) {
+  const moduleByTarget = {
+    dashboard: "dashboard",
+    recentLoansPanel: "loans",
+    loanDetailPanel: "loans",
+    newLoanPanel: "newLoan",
+    clientsPanel: "clients",
+    paymentPanel: "payments",
+    exportPanel: "reports",
+    formulaPanel: "reports",
+    settingsPanel: "settings",
+  };
+
+  return moduleByTarget[id] || "";
 }
 
 function exportCsv() {
