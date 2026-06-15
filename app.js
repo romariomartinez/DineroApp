@@ -11,7 +11,14 @@ const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY =
   import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
 const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const userAdminClient =
+  SUPABASE_URL && SUPABASE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
+      })
+    : null;
 const LOGIN_PATH = "/login.html";
+const USER_EMAIL_DOMAIN = "prestapp.local";
 const DEMO_LOANS = [
   ["Juan Perez", "3001234567", 500000],
   ["Ana Gomez", "3007654321", 300000],
@@ -37,6 +44,8 @@ const page = document.body.dataset.page || "dashboard";
 const todayIso = toIsoDate(new Date());
 
 let currentUser = null;
+let currentProfile = null;
+let adminUsers = [];
 let state = { loans: [] };
 let activeFilter = new URLSearchParams(window.location.search).get("filter") || "all";
 let selectedLoanId = "";
@@ -130,10 +139,12 @@ async function init() {
   bindClientsTable();
   bindPaymentForm();
   bindEditForm();
+  bindUsersAdmin();
   bindExport();
   hydrateUserShell();
   renderAll();
   loadRemoteState();
+  loadUsersAdmin();
 }
 
 async function initLoginPage() {
@@ -152,8 +163,15 @@ async function initLoginPage() {
   }
 
   if (data.session?.user) {
-    goToNextPage();
-    return;
+    currentUser = data.session.user;
+    currentProfile = await loadCurrentProfile();
+    if (currentProfile?.active) {
+      goToNextPage();
+      return;
+    }
+    await supabase.auth.signOut();
+    currentUser = null;
+    currentProfile = null;
   }
 
   bindAuthModeButtons();
@@ -179,6 +197,19 @@ async function initAuthenticatedUser() {
   }
 
   currentUser = data.session.user;
+  currentProfile = await loadCurrentProfile();
+  if (!currentProfile?.active) {
+    await supabase.auth.signOut();
+    showToast("Usuario desactivado");
+    redirectToLogin();
+    return false;
+  }
+
+  if (page === "users" && !isSuperUser()) {
+    window.location.href = "/index.html";
+    return false;
+  }
+
   return true;
 }
 
@@ -190,36 +221,55 @@ function bindAuthModeButtons() {
 }
 
 function setAuthMode(mode) {
-  const isSignup = mode === "signup";
+  const isBootstrap = mode === "bootstrap";
   document.body.dataset.authMode = mode;
   document.querySelectorAll("[data-auth-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.authMode === mode);
   });
-  q("authSubmit").textContent = isSignup ? "Crear acceso" : "Entrar";
-  q("authPassword").autocomplete = isSignup ? "new-password" : "current-password";
-  q("authHint").textContent = isSignup
-    ? "Crea un usuario con correo y clave para separar tu cartera."
-    : "Ingresa con tu correo y clave para ver tu cartera privada.";
+  q("authSubmit").textContent = isBootstrap ? "Crear super usuario" : "Entrar";
+  q("authPassword").autocomplete = isBootstrap ? "new-password" : "current-password";
+  q("authHint").textContent = isBootstrap
+    ? "Crea el primer super usuario para administrar PrestApp."
+    : "Ingresa con tu usuario y clave para ver tu cartera privada.";
 }
 
 async function handleAuthSubmit(event) {
   event.preventDefault();
   const mode = document.body.dataset.authMode || "login";
-  const email = q("authEmail").value.trim();
+  const username = normalizeUsername(q("authUsername").value);
   const password = q("authPassword").value;
   const submitButton = q("authSubmit");
 
+  if (!username) {
+    showToast("Escribe un usuario valido");
+    return;
+  }
+
   if (submitButton) submitButton.disabled = true;
   try {
+    const email = emailForUsername(username);
     const response =
-      mode === "signup"
+      mode === "bootstrap"
         ? await supabase.auth.signUp({ email, password })
         : await supabase.auth.signInWithPassword({ email, password });
 
     if (response.error) throw response.error;
 
-    if (mode === "signup" && !response.data.session) {
-      showToast("Revisa tu correo para activar el acceso");
+    if (mode === "bootstrap") {
+      if (!response.data.session?.user) {
+        showToast("Desactiva confirmacion de email en Supabase");
+        return;
+      }
+
+      await createBootstrapProfile(response.data.session.user, username);
+    }
+
+    currentUser = response.data.user;
+    currentProfile = await loadCurrentProfile();
+
+    if (!currentProfile?.active) {
+      await supabase.auth.signOut();
+      showToast("Usuario desactivado");
       return;
     }
 
@@ -232,22 +282,76 @@ async function handleAuthSubmit(event) {
   }
 }
 
+async function createBootstrapProfile(user, username) {
+  const { data: hasProfiles, error: countError } = await supabase.rpc("has_profiles");
+  if (countError) throw countError;
+  if (hasProfiles) {
+    await supabase.auth.signOut();
+    throw new Error("Ya existe un super usuario");
+  }
+
+  const { error } = await supabase.from("profiles").insert({
+    id: user.id,
+    username,
+    display_name: "Super usuario",
+    role: "superadmin",
+    active: true,
+  });
+  if (error) throw error;
+}
+
+async function loadCurrentProfile() {
+  if (!currentUser) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, role, active, created_at")
+    .eq("id", currentUser.id)
+    .maybeSingle();
+
+  if (error) {
+    handleSupabaseError(error, "cargar perfil");
+    return null;
+  }
+
+  return data;
+}
+
+function isSuperUser() {
+  return currentProfile?.role === "superadmin";
+}
+
+function normalizeUsername(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9._-]/g, "");
+}
+
+function emailForUsername(username) {
+  return `${username}@${USER_EMAIL_DOMAIN}`;
+}
+
 function hydrateUserShell() {
-  const email = currentUser?.email || "usuario@prestapp.com";
+  const username = currentProfile?.username || currentUser?.email?.split("@")[0] || "usuario";
   const adminCard = document.querySelector(".admin-card");
   const avatar = adminCard?.querySelector(".avatar");
   const name = adminCard?.querySelector("strong");
   const mail = adminCard?.querySelector("small");
 
-  if (avatar) avatar.textContent = email.slice(0, 1).toUpperCase();
-  if (name) name.textContent = "Mi cuenta";
-  if (mail) mail.textContent = email;
+  if (avatar) avatar.textContent = username.slice(0, 1).toUpperCase();
+  if (name) name.textContent = currentProfile?.display_name || username;
+  if (mail) mail.textContent = isSuperUser() ? "Super usuario" : `@${username}`;
   if (adminCard && !q("logoutButton")) {
     adminCard.insertAdjacentHTML(
       "beforeend",
       '<button class="logout-button" id="logoutButton" type="button">Salir</button>'
     );
   }
+  document.body.dataset.superuser = String(isSuperUser());
+  document.querySelectorAll(".superuser-only").forEach((item) => {
+    item.hidden = !isSuperUser();
+  });
   q("logoutButton")?.addEventListener("click", signOut);
 }
 
@@ -464,6 +568,85 @@ function bindEditForm() {
   });
 }
 
+function bindUsersAdmin() {
+  const form = q("userForm");
+  if (form) {
+    form.addEventListener("submit", handleUserSubmit);
+  }
+
+  q("usersBody")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-action]");
+    if (!button) return;
+
+    if (button.dataset.action === "toggle-user") {
+      await toggleUserStatus(button.dataset.userId, button.dataset.active !== "true");
+    }
+  });
+}
+
+async function handleUserSubmit(event) {
+  event.preventDefault();
+  if (!isSuperUser()) {
+    showToast("Solo el super usuario puede crear usuarios");
+    return;
+  }
+
+  const username = normalizeUsername(q("newUsername").value);
+  const password = q("newPassword").value;
+  const role = q("newRole").value;
+  const displayName = q("newDisplayName").value.trim() || username;
+
+  if (!username || password.length < 6) {
+    showToast("Usuario y clave minima de 6 caracteres");
+    return;
+  }
+
+  const button = event.submitter;
+  if (button) button.disabled = true;
+  try {
+    const { data, error } = await userAdminClient.auth.signUp({
+      email: emailForUsername(username),
+      password,
+    });
+    if (error) throw error;
+    if (!data.user?.id) throw new Error("No se pudo crear el usuario");
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: data.user.id,
+      username,
+      display_name: displayName,
+      role,
+      active: true,
+    });
+    if (profileError) throw profileError;
+
+    event.currentTarget.reset();
+    await loadUsersAdmin();
+    showToast("Usuario creado");
+  } catch (error) {
+    showToast(getSupabaseErrorMessage(error));
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function toggleUserStatus(userId, active) {
+  if (!isSuperUser()) return;
+  if (userId === currentUser?.id && !active) {
+    showToast("No puedes desactivar tu propio usuario");
+    return;
+  }
+
+  const { error } = await supabase.from("profiles").update({ active }).eq("id", userId);
+  if (error) {
+    handleSupabaseError(error, "actualizar usuario");
+    return;
+  }
+
+  await loadUsersAdmin();
+  showToast(active ? "Usuario activado" : "Usuario desactivado");
+}
+
 function bindExport() {
   q("exportBtn")?.addEventListener("click", exportCsv);
 }
@@ -475,6 +658,7 @@ function renderAll() {
   renderChart();
   renderSelectedLoan();
   renderPaymentForm();
+  renderUsersAdmin();
 }
 
 function renderMetrics() {
@@ -691,6 +875,58 @@ function renderPaymentForm() {
     q("paymentAmount").max = getLoanSummary(selectedLoan).remaining;
   }
   q("paymentDate").value = todayIso;
+}
+
+async function loadUsersAdmin() {
+  if (page !== "users" || !isSuperUser()) return;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, role, active, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    handleSupabaseError(error, "cargar usuarios");
+    return;
+  }
+
+  adminUsers = data || [];
+  renderUsersAdmin();
+}
+
+function renderUsersAdmin() {
+  const body = q("usersBody");
+  if (!body) return;
+
+  if (!isSuperUser()) {
+    body.innerHTML = `<tr><td class="empty-state" colspan="5">Solo el super usuario puede administrar usuarios.</td></tr>`;
+    return;
+  }
+
+  if (!adminUsers.length) {
+    body.innerHTML = `<tr><td class="empty-state" colspan="5">No hay usuarios registrados.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = adminUsers
+    .map((user) => {
+      const active = Boolean(user.active);
+      const isSelf = user.id === currentUser?.id;
+      const status = active
+        ? '<span class="status-pill status-active">Activo</span>'
+        : '<span class="status-pill status-overdue">Inactivo</span>';
+      const role = user.role === "superadmin" ? "Super usuario" : "Usuario";
+      const actionLabel = active ? "Desactivar" : "Activar";
+      return `
+        <tr>
+          <td>${escapeHtml(user.username)}</td>
+          <td>${escapeHtml(user.display_name || user.username)}</td>
+          <td>${role}</td>
+          <td>${status}</td>
+          <td><button class="ghost-button small-button" type="button" data-action="toggle-user" data-user-id="${user.id}" data-active="${active}" ${isSelf ? "disabled" : ""}>${actionLabel}</button></td>
+        </tr>
+      `;
+    })
+    .join("");
 }
 
 function updatePreview() {
@@ -1262,7 +1498,9 @@ function fromDbPayment(payment) {
 
 function handleSupabaseError(error, action) {
   const message = getSupabaseErrorMessage(error);
-  if (isMissingSupabaseTable(error) || isMissingUserColumn(error)) supabaseSchemaReady = false;
+  if (isMissingSupabaseTable(error) || isMissingUserColumn(error) || isMissingProfilesSetup(error)) {
+    supabaseSchemaReady = false;
+  }
   console.warn(`Supabase: no se pudo ${action}. ${message}`, error);
   showToast(message);
 }
@@ -1270,6 +1508,7 @@ function handleSupabaseError(error, action) {
 function getSupabaseErrorMessage(error) {
   if (isMissingSupabaseTable(error)) return "Faltan tablas en Supabase: ejecuta supabase/schema.sql";
   if (isMissingUserColumn(error)) return "Falta actualizar Supabase: ejecuta supabase/schema.sql";
+  if (isMissingProfilesSetup(error)) return "Falta actualizar usuarios: ejecuta supabase/schema.sql";
   if (error?.message) return `Supabase: ${error.message}`;
   return "Supabase no respondio; usando respaldo local";
 }
@@ -1282,6 +1521,11 @@ function isMissingSupabaseTable(error) {
 function isMissingUserColumn(error) {
   const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
   return text.includes("user_id") && (text.includes("column") || text.includes("schema cache"));
+}
+
+function isMissingProfilesSetup(error) {
+  const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
+  return text.includes("profiles") || text.includes("has_profiles");
 }
 
 function numberFrom(value) {

@@ -25,18 +25,18 @@
           <img class="auth-mark" src="/prestapp-mark.png" alt="" aria-hidden="true" />
           <div>
             <h2>Entrar al sistema</h2>
-            <p id="authHint">Ingresa con tu correo y clave para ver tu cartera privada.</p>
+            <p id="authHint">Ingresa con tu usuario y clave para ver tu cartera privada.</p>
           </div>
         </div>
 
         <div class="auth-tabs" role="tablist" aria-label="Modo de acceso">
           <button class="active" type="button" data-auth-mode="login">Entrar</button>
-          <button type="button" data-auth-mode="signup">Crear acceso</button>
+          <button type="button" data-auth-mode="bootstrap">Crear super usuario</button>
         </div>
 
         <form id="authForm" class="auth-form">
-          <label>Correo
-            <input id="authEmail" type="email" autocomplete="email" placeholder="tu@correo.com" required />
+          <label>Usuario
+            <input id="authUsername" type="text" autocomplete="username" placeholder="admin" required />
           </label>
           <label>Clave
             <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="Minimo 6 caracteres" required />

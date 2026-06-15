@@ -11,6 +11,7 @@ export default defineConfig({
         clientes: "clientes.html",
         pagos: "pagos.html",
         reportes: "reportes.html",
+        usuarios: "usuarios.html",
       },
     },
   },

@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PrestApp - Reportes</title>
+    <title>PrestApp - Usuarios</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/icon-192.png" />
     <meta name="theme-color" content="#061a3b" />
   </head>
-  <body data-page="reports">
+  <body data-page="users">
     <div class="dashboard-layout">
       <aside class="sidebar" id="sidebar">
         <div class="brand"><img class="brand-logo" src="/prestapp-mark.png" alt="PrestApp" /><strong>PrestApp</strong></div>
@@ -21,11 +21,12 @@
           <a class="nav-item" href="/prestamos.html"><span class="nav-icon">PR</span>Prestamos</a>
           <a class="nav-item" href="/pagos.html"><span class="nav-icon">PG</span>Pagos</a>
           <a class="nav-item" href="/prestamos.html?filter=overdue"><span class="nav-icon">MO</span>Moras</a>
-          <a class="nav-item active" href="/reportes.html"><span class="nav-icon">RP</span>Reportes</a>
-          <a class="nav-item superuser-only" href="/usuarios.html"><span class="nav-icon">US</span>Usuarios</a>
+          <a class="nav-item" href="/reportes.html"><span class="nav-icon">RP</span>Reportes</a>
+          <a class="nav-item active superuser-only" href="/usuarios.html"><span class="nav-icon">US</span>Usuarios</a>
         </nav>
         <div class="admin-card"><span class="avatar">A</span><div><strong>Administrador</strong><small>admin@prestapp.com</small></div></div>
       </aside>
+
       <div class="main-shell">
         <header class="topbar">
           <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu">&#9776;</button>
@@ -34,20 +35,37 @@
         </header>
         <main class="content">
           <section class="page-title">
-            <div><span class="module-kicker">Analitica</span><h1>Reportes</h1><p>Exporta datos y revisa formulas de cobro.</p></div>
+            <div><span class="module-kicker">Seguridad</span><h1>Usuarios</h1><p>Crea accesos y activa o desactiva usuarios.</p></div>
           </section>
-          <section class="reports-grid">
-            <article class="panel export-panel" id="exportPanel">
-              <div class="panel-header"><h2>Exportar a Excel</h2></div>
-              <p>Descarga el reporte de todos los clientes y prestamos.</p>
-              <div class="excel-art">X</div>
-              <label>Que quieres exportar?<select id="exportType"><option>Todos los prestamos</option><option>Solo activos</option><option>Solo en mora</option><option>Solo pagados</option></select></label>
-              <button class="primary-button full-width" id="exportBtn" type="button">Exportar Excel</button>
+
+          <section class="module-stack users-grid">
+            <article class="panel" id="usersFormPanel">
+              <div class="panel-header"><h2>Nuevo usuario</h2></div>
+              <form id="userForm" class="payment-form">
+                <label>Usuario<input id="newUsername" type="text" placeholder="cobrador1" required /></label>
+                <label>Nombre<input id="newDisplayName" type="text" placeholder="Nombre de la persona" /></label>
+                <label>Clave<input id="newPassword" type="password" minlength="6" placeholder="Minimo 6 caracteres" required /></label>
+                <label>Rol<select id="newRole"><option value="user">Usuario</option><option value="superadmin">Super usuario</option></select></label>
+                <button class="primary-button full-width" type="submit">Crear usuario</button>
+              </form>
+            </article>
+
+            <article class="panel table-panel" id="usersPanel">
+              <div class="panel-header"><h2>Usuarios registrados</h2></div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Accion</th></tr>
+                  </thead>
+                  <tbody id="usersBody"></tbody>
+                </table>
+              </div>
             </article>
           </section>
         </main>
       </div>
     </div>
+
     <nav class="mobile-tabbar" aria-label="Navegacion movil">
       <a href="/index.html">Inicio</a><a href="/clientes.html">Clientes</a><a href="/nuevo-prestamo.html">Nuevo</a><a href="/pagos.html">Pagos</a><a href="/prestamos.html">Mas</a>
     </nav>

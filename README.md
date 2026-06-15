@@ -12,7 +12,7 @@ La app esta separada en paginas reales:
 - `clientes.html`: clientes.
 - `pagos.html`: registro de pagos.
 - `reportes.html`: exportacion de datos.
-- `login.html`: acceso por correo y clave.
+- `login.html`: acceso por usuario y clave.
 
 ## Supabase
 
@@ -47,13 +47,25 @@ git remote add origin https://github.com/TU-USUARIO/prestapp.git
 git push -u origin main
 ```
 
-## Login
+## Login y usuarios
 
-La app usa Supabase Auth. En Supabase, revisa `Authentication > Providers` y deja activo el proveedor `Email`.
+La app usa usuario y clave en pantalla. Internamente Supabase Auth guarda cada usuario como `usuario@prestapp.local`, pero la persona no tiene que escribir correo.
 
-Cada prestamo se guarda con el `user_id` del usuario autenticado. Por eso cada persona entra con su correo y solo ve su propia cartera.
+Cada prestamo se guarda con el `user_id` del usuario autenticado. Por eso cada persona entra con su usuario y solo ve su propia cartera.
 
-En `Authentication > URL Configuration`, pon la URL de Vercel como `Site URL` y agregala tambien en `Redirect URLs`.
+En Supabase:
+
+1. Ve a `Authentication > Providers` y deja activo `Email`.
+2. Desactiva confirmacion obligatoria de email, porque los usuarios no entran con correo real.
+3. En `Authentication > URL Configuration`, pon la URL de Vercel como `Site URL` y agregala tambien en `Redirect URLs`.
+4. Ejecuta `supabase/schema.sql`.
+
+Para crear el primer administrador:
+
+1. Abre `login.html`.
+2. Toca `Crear super usuario`.
+3. Escribe un usuario, por ejemplo `admin`, y una clave.
+4. Entra al modulo `Usuarios` para crear, activar o desactivar usuarios.
 
 Si ya tenias datos reales antes de activar login, en Supabase debes asignarlos a un usuario:
 

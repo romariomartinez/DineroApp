@@ -150,6 +150,8 @@ body[data-page="login"] {
   background: transparent;
   color: var(--muted);
   font-weight: 900;
+  line-height: 1.15;
+  white-space: normal;
 }
 
 .auth-tabs button.active {
@@ -254,7 +256,7 @@ body[data-page="login"] {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0;
   min-height: 44px;
   width: 100%;
   border: 0;
@@ -275,7 +277,7 @@ body[data-page="login"] {
 }
 
 .nav-icon {
-  display: grid;
+  display: none;
   place-items: center;
   width: 24px;
   height: 24px;
@@ -284,6 +286,10 @@ body[data-page="login"] {
   color: #fff;
   font-size: 0.63rem;
   font-weight: 950;
+}
+
+body:not([data-superuser="true"]) .superuser-only {
+  display: none;
 }
 
 .admin-card {
@@ -503,6 +509,11 @@ body[data-page="payments"] .module-kicker {
 body[data-page="reports"] .module-kicker {
   background: #fff4d8;
   color: var(--amber, #b85d12);
+}
+
+body[data-page="users"] .module-kicker {
+  background: #eef2ff;
+  color: var(--purple);
 }
 
 .module-commandbar {
@@ -777,6 +788,16 @@ body[data-page="loans"] #recentLoansPanel {
 
 body[data-page="reports"] #exportPanel {
   border-top: 4px solid var(--orange);
+}
+
+body[data-page="users"] #usersFormPanel,
+body[data-page="users"] #usersPanel {
+  border-top: 4px solid var(--purple);
+}
+
+.users-grid {
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  align-items: start;
 }
 
 .panel {
@@ -1320,6 +1341,7 @@ select {
   body[data-page="clients"] .single-module-grid,
   body[data-page="payments"] .single-module-grid,
   body[data-page="reports"] .reports-grid,
+  .users-grid,
   .single-module-grid,
   .reports-grid {
     grid-template-columns: 1fr;
@@ -1492,6 +1514,7 @@ select {
   body[data-page="payments"] .single-module-grid,
   body[data-page="reports"] .reports-grid,
   body[data-page="loans"] .module-stack,
+  .users-grid,
   .single-module-grid,
   .reports-grid {
     grid-template-columns: 1fr;
