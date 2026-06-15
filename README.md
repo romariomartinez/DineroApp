@@ -75,6 +75,17 @@ where user_id is null;
 
 Importante: despues de publicar, crea los accesos desde `login.html` o desde `Authentication > Users` en Supabase.
 
+## Android
+
+La app esta preparada como PWA. En Android:
+
+1. Abre el URL de Vercel en Chrome.
+2. Toca el menu de tres puntos.
+3. Toca `Instalar app` o `Agregar a pantalla principal`.
+4. Confirma `Instalar`.
+
+Android agregara el icono de PrestApp en la pantalla principal y se abrira como aplicacion independiente.
+
 ## Error 404 de Supabase
 
 Si en la consola aparece un `404` apuntando a una URL de Supabase como `/rest/v1/loans`, falta crear las tablas.

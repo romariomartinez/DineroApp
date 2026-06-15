@@ -43,7 +43,18 @@ let selectedLoanId = "";
 let syncTimer = null;
 let supabaseSchemaReady = Boolean(supabase);
 
+registerServiceWorker();
 init();
+
+function registerServiceWorker() {
+  const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  if (!("serviceWorker" in navigator) || isLocalhost) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
+      console.warn("No se pudo instalar PrestApp como PWA", error);
+    });
+  });
+}
 
 async function init() {
   if (page === "login") {
