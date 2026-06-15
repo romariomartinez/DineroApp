@@ -8,6 +8,13 @@ const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY =
   import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
 const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const DEMO_LOANS = [
+  ["Juan Perez", "3001234567", 500000],
+  ["Ana Gomez", "3007654321", 300000],
+  ["Luis Diaz", "3011122233", 800000],
+  ["Maria Lopez", "3022233344", 400000],
+  ["Carlos Ruiz", "3033344455", 600000],
+];
 
 const money = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -30,6 +37,12 @@ let activeFilter = new URLSearchParams(window.location.search).get("filter") || 
 let selectedLoanId = localStorage.getItem(SELECTED_LOAN_KEY) || state.loans[0]?.id || "";
 let syncTimer = null;
 let supabaseSchemaReady = Boolean(supabase);
+
+if (!state.loans.some((loan) => loan.id === selectedLoanId)) {
+  selectedLoanId = state.loans[0]?.id || "";
+}
+localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+localStorage.setItem(SELECTED_LOAN_KEY, selectedLoanId);
 
 init();
 
@@ -463,7 +476,7 @@ function loadState() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed.loans)) return parsed;
+      if (Array.isArray(parsed.loans)) return sanitizeState(parsed);
     } catch (error) {
       console.warn("No se pudo leer el respaldo local", error);
     }
@@ -474,14 +487,14 @@ function loadState() {
     try {
       const parsed = JSON.parse(oldSaved);
       if (Array.isArray(parsed.loans) && parsed.loans.length > 1) {
-        return { loans: parsed.loans.map(normalizeLoan) };
+        return sanitizeState({ loans: parsed.loans.map(normalizeLoan) });
       }
     } catch (error) {
       console.warn("No se pudo migrar el respaldo anterior", error);
     }
   }
 
-  return createSeedState();
+  return { loans: [] };
 }
 
 function saveState() {
@@ -499,7 +512,6 @@ async function loadRemoteState() {
     if (loansError) throw loansError;
 
     if (!loans?.length) {
-      await syncAllToSupabase();
       showToast("Supabase conectado");
       return;
     }
@@ -514,7 +526,7 @@ async function loadRemoteState() {
     if (installmentsError) throw installmentsError;
     if (paymentsError) throw paymentsError;
 
-    state = { loans: loans.map((loan) => fromDbLoan(loan, installments || [], payments || [])) };
+    state = sanitizeState({ loans: loans.map((loan) => fromDbLoan(loan, installments || [], payments || [])) });
     selectedLoanId = state.loans[0]?.id || "";
     localStorage.setItem(SELECTED_LOAN_KEY, selectedLoanId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -572,45 +584,6 @@ async function deleteRemoteLoans(loanIds) {
   if (!supabase || !loanIds.length) return;
   const { error } = await supabase.from("loans").delete().in("id", loanIds);
   if (error) handleSupabaseError(error, "eliminar datos");
-}
-
-function createSeedState() {
-  return {
-    loans: [
-      seedLoan("Juan Perez", "3001234567", 500000, 10, 45, 4, "2026-06-01", "Quincenal", 137500, "2026-06-12"),
-      seedLoan("Ana Gomez", "3007654321", 300000, 15, 30, 3, "2026-05-06", "Semanal", 345000, "2026-06-04"),
-      seedLoan("Luis Diaz", "3011122233", 800000, 10, 60, 4, "2026-05-02", "Quincenal", 200000, "2026-05-18"),
-      seedLoan("Maria Lopez", "3022233344", 400000, 10, 30, 3, "2026-06-10", "Semanal", 0, ""),
-      seedLoan("Carlos Ruiz", "3033344455", 600000, 15, 45, 3, "2026-05-28", "Quincenal", 230000, "2026-06-08"),
-    ],
-  };
-}
-
-function seedLoan(borrower, phone, amount, interestRate, termDays, installmentsCount, startDate, paymentFrequency, paid, paidDate) {
-  const totals = calculateTotals(amount, interestRate, installmentsCount);
-  const loan = {
-    id: uid(),
-    borrower,
-    phone,
-    amount,
-    interestRate,
-    termDays,
-    installmentsCount,
-    startDate,
-    paymentFrequency,
-    notes: "",
-    installments: buildSchedule(totals.total, installmentsCount, startDate, termDays),
-    payments: [],
-    createdAt: new Date().toISOString(),
-  };
-  if (paid > 0) {
-    applyPayment(loan, loan.installments[0].id, paid, {
-      date: paidDate || startDate,
-      method: "Carga inicial",
-      note: "Pago de ejemplo",
-    });
-  }
-  return loan;
 }
 
 function createLoanFromForm() {
@@ -675,6 +648,17 @@ function normalizeLoan(loan) {
         }))
       : [],
   };
+}
+
+function sanitizeState(value) {
+  const loans = Array.isArray(value.loans) ? value.loans.filter((loan) => !isDemoLoan(loan)) : [];
+  return { ...value, loans };
+}
+
+function isDemoLoan(loan) {
+  return DEMO_LOANS.some(([borrower, phone, amount]) => {
+    return loan.borrower === borrower && loan.phone === phone && Number(loan.amount) === amount;
+  });
 }
 
 function openEditDialog(loan) {

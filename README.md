@@ -62,3 +62,9 @@ Importante: esta version no tiene login. Para datos reales, conviene agregar aut
 
 Si en la consola aparece un `404` apuntando a una URL de Supabase como `/rest/v1/loans`, falta crear las tablas.
 Ejecuta completo el archivo `supabase/schema.sql` en el `SQL Editor` de Supabase y vuelve a cargar la app.
+
+## Datos demo
+
+La app ya no crea datos de ejemplo automaticamente. Si en Supabase quedaron datos demo antiguos
+como `Juan Perez`, `Ana Gomez`, `Luis Diaz`, `Maria Lopez` o `Carlos Ruiz`, ejecuta
+`supabase/remove-demo-data.sql` en el `SQL Editor` para borrarlos.
