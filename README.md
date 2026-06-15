@@ -11,8 +11,7 @@ La app esta separada en paginas reales:
 - `nuevo-prestamo.html`: formulario de nuevo prestamo.
 - `clientes.html`: clientes.
 - `pagos.html`: registro de pagos.
-- `reportes.html`: exportacion y formulas.
-- `configuracion.html`: configuracion del sistema.
+- `reportes.html`: exportacion de datos.
 
 ## Supabase
 

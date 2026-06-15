@@ -10,7 +10,6 @@ export default defineConfig({
         clientes: "clientes.html",
         pagos: "pagos.html",
         reportes: "reportes.html",
-        configuracion: "configuracion.html",
       },
     },
   },
