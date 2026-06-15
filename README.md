@@ -12,7 +12,7 @@ Sistema web responsive para administrar prestamos, clientes, cuotas, pagos y rep
 
 ```bash
 VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
-VITE_SUPABASE_ANON_KEY=TU_LLAVE_ANON_PUBLICA
+VITE_SUPABASE_PUBLISHABLE_KEY=TU_LLAVE_PUBLICA
 ```
 
 ## Desarrollo local
@@ -42,7 +42,7 @@ git push -u origin main
 3. Framework: Vite.
 4. Agrega estas variables:
    - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
 5. Deploy.
 
 Importante: esta version no tiene login. Para datos reales, conviene agregar autenticacion antes de dejarla publica.

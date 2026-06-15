@@ -3,8 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 const STORAGE_KEY = "prestapp-dashboard-v2";
 const OLD_STORAGE_KEY = "control-prestamos-v1";
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
-const supabase = SUPABASE_URL && SUPABASE_ANON_KEY ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const SUPABASE_KEY =
+  import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
+const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 const money = new Intl.NumberFormat("es-CO", {
   style: "currency",
