@@ -61,6 +61,7 @@ let state = loadState();
 let activeFilter = "all";
 let selectedLoanId = state.loans[0]?.id || "";
 let syncTimer = null;
+let supabaseSchemaReady = Boolean(supabase);
 
 elements.startDate.value = todayIso;
 elements.paymentDate.value = todayIso;
@@ -241,18 +242,16 @@ async function loadRemoteState() {
     renderAll();
     showToast("Datos cargados de Supabase");
   } catch (error) {
-    console.error(error);
-    showToast("Supabase no respondio; usando respaldo local");
+    handleSupabaseError(error, "cargar datos");
   }
 }
 
 function queueRemoteSave() {
-  if (!supabase) return;
+  if (!supabase || !supabaseSchemaReady) return;
   window.clearTimeout(syncTimer);
   syncTimer = window.setTimeout(() => {
     syncAllToSupabase().catch((error) => {
-      console.error(error);
-      showToast("No se pudo guardar en Supabase");
+      handleSupabaseError(error, "guardar datos");
     });
   }, 400);
 }
@@ -296,9 +295,34 @@ async function deleteRemoteLoans(loanIds) {
   if (!supabase || !loanIds.length) return;
   const { error } = await supabase.from("loans").delete().in("id", loanIds);
   if (error) {
-    console.error(error);
-    showToast("No se pudo eliminar en Supabase");
+    handleSupabaseError(error, "eliminar datos");
   }
+}
+
+function handleSupabaseError(error, action) {
+  const message = getSupabaseErrorMessage(error);
+  if (isMissingSupabaseTable(error)) {
+    supabaseSchemaReady = false;
+  }
+  console.warn(`Supabase: no se pudo ${action}. ${message}`, error);
+  showToast(message);
+}
+
+function getSupabaseErrorMessage(error) {
+  if (isMissingSupabaseTable(error)) {
+    return "Faltan tablas en Supabase: ejecuta supabase/schema.sql";
+  }
+
+  if (error?.message) {
+    return `Supabase: ${error.message}`;
+  }
+
+  return "Supabase no respondio; usando respaldo local";
+}
+
+function isMissingSupabaseTable(error) {
+  const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
+  return error?.status === 404 || text.includes("PGRST205") || text.includes("schema cache");
 }
 
 function toDbLoan(loan) {

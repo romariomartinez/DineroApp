@@ -46,3 +46,8 @@ git push -u origin main
 5. Deploy.
 
 Importante: esta version no tiene login. Para datos reales, conviene agregar autenticacion antes de dejarla publica.
+
+## Error 404 de Supabase
+
+Si en la consola aparece un `404` apuntando a una URL de Supabase como `/rest/v1/loans`, falta crear las tablas.
+Ejecuta completo el archivo `supabase/schema.sql` en el `SQL Editor` de Supabase y vuelve a cargar la app.
