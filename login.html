@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrestApp - Login</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="login" data-auth-mode="login">
+    <main class="auth-shell">
+      <section class="auth-brand">
+        <img class="auth-logo" src="/prestapp-logo.png" alt="PrestApp" />
+        <div>
+          <span class="module-kicker">Acceso privado</span>
+          <h1>PrestApp</h1>
+          <p>Tu cartera, tus clientes y tus pagos separados por usuario.</p>
+        </div>
+      </section>
+
+      <section class="auth-panel" aria-label="Acceso a PrestApp">
+        <div class="auth-panel-header">
+          <img class="auth-mark" src="/prestapp-mark.png" alt="" aria-hidden="true" />
+          <div>
+            <h2>Entrar al sistema</h2>
+            <p id="authHint">Ingresa con tu correo y clave para ver tu cartera privada.</p>
+          </div>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="Modo de acceso">
+          <button class="active" type="button" data-auth-mode="login">Entrar</button>
+          <button type="button" data-auth-mode="signup">Crear acceso</button>
+        </div>
+
+        <form id="authForm" class="auth-form">
+          <label>Correo
+            <input id="authEmail" type="email" autocomplete="email" placeholder="tu@correo.com" required />
+          </label>
+          <label>Clave
+            <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="Minimo 6 caracteres" required />
+          </label>
+          <button class="primary-button full-width" id="authSubmit" type="submit">Entrar</button>
+        </form>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

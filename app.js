@@ -11,6 +11,7 @@ const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY =
   import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
 const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const LOGIN_PATH = "/login.html";
 const DEMO_LOANS = [
   ["Juan Perez", "3001234567", 500000],
   ["Ana Gomez", "3007654321", 300000],
@@ -35,21 +36,32 @@ const q = (id) => document.getElementById(id);
 const page = document.body.dataset.page || "dashboard";
 const todayIso = toIsoDate(new Date());
 
-let state = loadState();
+let currentUser = null;
+let state = { loans: [] };
 let activeFilter = new URLSearchParams(window.location.search).get("filter") || "all";
-let selectedLoanId = localStorage.getItem(SELECTED_LOAN_KEY) || state.loans[0]?.id || "";
+let selectedLoanId = "";
 let syncTimer = null;
 let supabaseSchemaReady = Boolean(supabase);
 
-if (!state.loans.some((loan) => loan.id === selectedLoanId)) {
-  selectedLoanId = state.loans[0]?.id || "";
-}
-localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-localStorage.setItem(SELECTED_LOAN_KEY, selectedLoanId);
-
 init();
 
-function init() {
+async function init() {
+  if (page === "login") {
+    initLoginPage();
+    return;
+  }
+
+  const sessionReady = await initAuthenticatedUser();
+  if (!sessionReady) return;
+
+  state = loadState();
+  selectedLoanId = storageGet(SELECTED_LOAN_KEY) || state.loans[0]?.id || "";
+  if (!state.loans.some((loan) => loan.id === selectedLoanId)) {
+    selectedLoanId = state.loans[0]?.id || "";
+  }
+  storageSet(STORAGE_KEY, JSON.stringify(state));
+  storageSet(SELECTED_LOAN_KEY, selectedLoanId);
+
   bindShell();
   bindSearch();
   bindFilters();
@@ -60,8 +72,161 @@ function init() {
   bindPaymentForm();
   bindEditForm();
   bindExport();
+  hydrateUserShell();
   renderAll();
   loadRemoteState();
+}
+
+async function initLoginPage() {
+  const form = q("authForm");
+  const submitButton = q("authSubmit");
+  if (!supabase) {
+    if (submitButton) submitButton.disabled = true;
+    showToast("Falta configurar Supabase");
+    return;
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    showToast(getSupabaseErrorMessage(error));
+    return;
+  }
+
+  if (data.session?.user) {
+    goToNextPage();
+    return;
+  }
+
+  bindAuthModeButtons();
+  form?.addEventListener("submit", handleAuthSubmit);
+}
+
+async function initAuthenticatedUser() {
+  if (!supabase) {
+    redirectToLogin();
+    return false;
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    handleSupabaseError(error, "validar sesion");
+    redirectToLogin();
+    return false;
+  }
+
+  if (!data.session?.user) {
+    redirectToLogin();
+    return false;
+  }
+
+  currentUser = data.session.user;
+  return true;
+}
+
+function bindAuthModeButtons() {
+  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+    button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
+  });
+  setAuthMode("login");
+}
+
+function setAuthMode(mode) {
+  const isSignup = mode === "signup";
+  document.body.dataset.authMode = mode;
+  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.authMode === mode);
+  });
+  q("authSubmit").textContent = isSignup ? "Crear acceso" : "Entrar";
+  q("authPassword").autocomplete = isSignup ? "new-password" : "current-password";
+  q("authHint").textContent = isSignup
+    ? "Crea un usuario con correo y clave para separar tu cartera."
+    : "Ingresa con tu correo y clave para ver tu cartera privada.";
+}
+
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+  const mode = document.body.dataset.authMode || "login";
+  const email = q("authEmail").value.trim();
+  const password = q("authPassword").value;
+  const submitButton = q("authSubmit");
+
+  if (submitButton) submitButton.disabled = true;
+  try {
+    const response =
+      mode === "signup"
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
+
+    if (response.error) throw response.error;
+
+    if (mode === "signup" && !response.data.session) {
+      showToast("Revisa tu correo para activar el acceso");
+      return;
+    }
+
+    showToast("Acceso correcto");
+    goToNextPage();
+  } catch (error) {
+    showToast(getSupabaseErrorMessage(error));
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+function hydrateUserShell() {
+  const email = currentUser?.email || "usuario@prestapp.com";
+  const adminCard = document.querySelector(".admin-card");
+  const avatar = adminCard?.querySelector(".avatar");
+  const name = adminCard?.querySelector("strong");
+  const mail = adminCard?.querySelector("small");
+
+  if (avatar) avatar.textContent = email.slice(0, 1).toUpperCase();
+  if (name) name.textContent = "Mi cuenta";
+  if (mail) mail.textContent = email;
+  if (adminCard && !q("logoutButton")) {
+    adminCard.insertAdjacentHTML(
+      "beforeend",
+      '<button class="logout-button" id="logoutButton" type="button">Salir</button>'
+    );
+  }
+  q("logoutButton")?.addEventListener("click", signOut);
+}
+
+async function signOut() {
+  try {
+    await flushRemoteSave();
+  } catch (error) {
+    handleSupabaseError(error, "guardar antes de salir");
+  }
+  await supabase?.auth.signOut();
+  window.location.href = LOGIN_PATH;
+}
+
+function redirectToLogin() {
+  if (page === "login") return;
+  const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+  window.location.href = `${LOGIN_PATH}?next=${next}`;
+}
+
+function goToNextPage() {
+  const next = new URLSearchParams(window.location.search).get("next");
+  window.location.href = next?.startsWith("/") ? next : "/index.html";
+}
+
+function scopedStorageKey(key) {
+  return currentUser?.id ? `${key}:${currentUser.id}` : key;
+}
+
+function storageGet(key) {
+  return localStorage.getItem(scopedStorageKey(key));
+}
+
+function storageSet(key, value) {
+  localStorage.setItem(scopedStorageKey(key), value);
+}
+
+function storageRemove(key) {
+  localStorage.removeItem(scopedStorageKey(key));
 }
 
 function bindShell() {
@@ -103,7 +268,7 @@ function bindLoanForm() {
     const loan = createLoanFromForm();
     state.loans.unshift(loan);
     selectedLoanId = loan.id;
-    localStorage.setItem(SELECTED_LOAN_KEY, selectedLoanId);
+    storageSet(SELECTED_LOAN_KEY, selectedLoanId);
     try {
       await saveState({ immediate: true });
       showToast("Prestamo guardado");
@@ -161,7 +326,7 @@ function bindInstallmentsTable() {
     const button = event.target.closest("button[data-action='pay-installment']");
     if (!button) return;
     selectLoan(button.dataset.loanId);
-    localStorage.setItem(SELECTED_INSTALLMENT_KEY, button.dataset.installmentId);
+    storageSet(SELECTED_INSTALLMENT_KEY, button.dataset.installmentId);
     window.location.href = "/pagos.html";
   });
 }
@@ -210,7 +375,7 @@ function bindPaymentForm() {
     });
 
     selectLoan(loan.id);
-    localStorage.removeItem(SELECTED_INSTALLMENT_KEY);
+    storageRemove(SELECTED_INSTALLMENT_KEY);
     saveState();
     renderAll();
     showToast(`Pago registrado por ${formatMoney(applied)}`);
@@ -459,7 +624,7 @@ function renderPaymentForm() {
     .map((item) => `<option value="${item.id}">Cuota ${item.number} - ${formatMoney(item.amount - item.paid)}</option>`)
     .join("");
 
-  const preferredInstallmentId = localStorage.getItem(SELECTED_INSTALLMENT_KEY);
+  const preferredInstallmentId = storageGet(SELECTED_INSTALLMENT_KEY);
   const installment = pendingInstallments.find((item) => item.id === preferredInstallmentId) || pendingInstallments[0];
   if (installment) {
     q("paymentInstallmentSelect").value = installment.id;
@@ -482,7 +647,7 @@ function updatePreview() {
 }
 
 function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = storageGet(STORAGE_KEY);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -492,7 +657,7 @@ function loadState() {
     }
   }
 
-  const oldSaved = localStorage.getItem(OLD_STORAGE_KEY);
+  const oldSaved = storageGet(OLD_STORAGE_KEY);
   if (oldSaved) {
     try {
       const parsed = JSON.parse(oldSaved);
@@ -508,7 +673,7 @@ function loadState() {
 }
 
 function saveState(options = {}) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  storageSet(STORAGE_KEY, JSON.stringify(state));
   markPendingSync();
   if (options.immediate) return flushRemoteSave();
   queueRemoteSave();
@@ -525,6 +690,7 @@ async function loadRemoteState() {
     const { data: loans, error: loansError } = await supabase
       .from("loans")
       .select("*")
+      .eq("user_id", currentUser.id)
       .order("created_at", { ascending: false });
     if (loansError) throw loansError;
 
@@ -548,8 +714,8 @@ async function loadRemoteState() {
       { removeLegacyDemos: true }
     );
     selectedLoanId = state.loans[0]?.id || "";
-    localStorage.setItem(SELECTED_LOAN_KEY, selectedLoanId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storageSet(SELECTED_LOAN_KEY, selectedLoanId);
+    storageSet(STORAGE_KEY, JSON.stringify(state));
     renderAll();
     showToast("Datos cargados de Supabase");
   } catch (error) {
@@ -577,9 +743,10 @@ async function syncAllToSupabase() {
   const pendingDeletedLoanIds = getPendingDeletedLoanIds();
 
   if (!state.loans.length) {
-    await supabase.from("payments").delete().neq("id", "__none__");
-    await supabase.from("installments").delete().neq("id", "__none__");
-    await supabase.from("loans").delete().neq("id", "__none__");
+    if (pendingDeletedLoanIds.length) {
+      const { error } = await supabase.from("loans").delete().in("id", pendingDeletedLoanIds);
+      if (error) throw error;
+    }
     clearPendingDeletedLoanIds(pendingDeletedLoanIds);
     clearPendingSync();
     return;
@@ -630,20 +797,20 @@ async function deleteRemoteLoans(loanIds) {
 
 function markPendingSync() {
   if (!supabase || !supabaseSchemaReady) return;
-  localStorage.setItem(PENDING_SYNC_KEY, "1");
+  storageSet(PENDING_SYNC_KEY, "1");
 }
 
 function clearPendingSync() {
-  localStorage.removeItem(PENDING_SYNC_KEY);
+  storageRemove(PENDING_SYNC_KEY);
 }
 
 function hasPendingSync() {
-  return localStorage.getItem(PENDING_SYNC_KEY) === "1";
+  return storageGet(PENDING_SYNC_KEY) === "1";
 }
 
 function getPendingDeletedLoanIds() {
   try {
-    const ids = JSON.parse(localStorage.getItem(DELETED_LOANS_KEY) || "[]");
+    const ids = JSON.parse(storageGet(DELETED_LOANS_KEY) || "[]");
     return Array.isArray(ids) ? ids.filter(Boolean) : [];
   } catch (error) {
     console.warn("No se pudo leer la lista de prestamos eliminados", error);
@@ -653,7 +820,7 @@ function getPendingDeletedLoanIds() {
 
 function markPendingDeletedLoans(loanIds) {
   const ids = new Set([...getPendingDeletedLoanIds(), ...loanIds.filter(Boolean)]);
-  localStorage.setItem(DELETED_LOANS_KEY, JSON.stringify([...ids]));
+  storageSet(DELETED_LOANS_KEY, JSON.stringify([...ids]));
   markPendingSync();
 }
 
@@ -661,8 +828,8 @@ function clearPendingDeletedLoanIds(loanIds) {
   if (!loanIds.length) return;
   const done = new Set(loanIds);
   const pending = getPendingDeletedLoanIds().filter((loanId) => !done.has(loanId));
-  if (pending.length) localStorage.setItem(DELETED_LOANS_KEY, JSON.stringify(pending));
-  else localStorage.removeItem(DELETED_LOANS_KEY);
+  if (pending.length) storageSet(DELETED_LOANS_KEY, JSON.stringify(pending));
+  else storageRemove(DELETED_LOANS_KEY);
 }
 
 function createLoanFromForm() {
@@ -911,7 +1078,7 @@ function getClientKey(loan) {
 
 function selectLoan(loanId) {
   selectedLoanId = loanId;
-  if (loanId) localStorage.setItem(SELECTED_LOAN_KEY, loanId);
+  if (loanId) storageSet(SELECTED_LOAN_KEY, loanId);
 }
 
 function getSelectedLoan() {
@@ -958,6 +1125,7 @@ function getLoansForExport(type) {
 function toDbLoan(loan) {
   return {
     id: loan.id,
+    user_id: currentUser?.id,
     borrower: loan.borrower,
     phone: loan.phone,
     amount: loan.amount,
@@ -1007,6 +1175,7 @@ function fromDbLoan(loan, installments, payments) {
     startDate: loan.start_date,
     paymentFrequency: loan.payment_frequency || "Quincenal",
     notes: loan.notes || "",
+    userId: loan.user_id || "",
     installments: installments.filter((item) => item.loan_id === loan.id).map(fromDbInstallment),
     payments: payments.filter((item) => item.loan_id === loan.id).map(fromDbPayment),
     createdAt: loan.created_at || new Date().toISOString(),
@@ -1036,13 +1205,14 @@ function fromDbPayment(payment) {
 
 function handleSupabaseError(error, action) {
   const message = getSupabaseErrorMessage(error);
-  if (isMissingSupabaseTable(error)) supabaseSchemaReady = false;
+  if (isMissingSupabaseTable(error) || isMissingUserColumn(error)) supabaseSchemaReady = false;
   console.warn(`Supabase: no se pudo ${action}. ${message}`, error);
   showToast(message);
 }
 
 function getSupabaseErrorMessage(error) {
   if (isMissingSupabaseTable(error)) return "Faltan tablas en Supabase: ejecuta supabase/schema.sql";
+  if (isMissingUserColumn(error)) return "Falta actualizar Supabase: ejecuta supabase/schema.sql";
   if (error?.message) return `Supabase: ${error.message}`;
   return "Supabase no respondio; usando respaldo local";
 }
@@ -1050,6 +1220,11 @@ function getSupabaseErrorMessage(error) {
 function isMissingSupabaseTable(error) {
   const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
   return error?.status === 404 || text.includes("PGRST205") || text.includes("schema cache");
+}
+
+function isMissingUserColumn(error) {
+  const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
+  return text.includes("user_id") && (text.includes("column") || text.includes("schema cache"));
 }
 
 function numberFrom(value) {

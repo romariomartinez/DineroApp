@@ -4,6 +4,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        login: "login.html",
         dashboard: "index.html",
         prestamos: "prestamos.html",
         nuevoPrestamo: "nuevo-prestamo.html",

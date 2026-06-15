@@ -12,6 +12,7 @@ La app esta separada en paginas reales:
 - `clientes.html`: clientes.
 - `pagos.html`: registro de pagos.
 - `reportes.html`: exportacion de datos.
+- `login.html`: acceso por correo y clave.
 
 ## Supabase
 
@@ -46,6 +47,22 @@ git remote add origin https://github.com/TU-USUARIO/prestapp.git
 git push -u origin main
 ```
 
+## Login
+
+La app usa Supabase Auth. En Supabase, revisa `Authentication > Providers` y deja activo el proveedor `Email`.
+
+Cada prestamo se guarda con el `user_id` del usuario autenticado. Por eso cada persona entra con su correo y solo ve su propia cartera.
+
+En `Authentication > URL Configuration`, pon la URL de Vercel como `Site URL` y agregala tambien en `Redirect URLs`.
+
+Si ya tenias datos reales antes de activar login, en Supabase debes asignarlos a un usuario:
+
+```sql
+update public.loans
+set user_id = 'ID_DEL_USUARIO'
+where user_id is null;
+```
+
 ## Vercel
 
 1. Entra a Vercel.
@@ -56,7 +73,7 @@ git push -u origin main
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
 5. Deploy.
 
-Importante: esta version no tiene login. Para datos reales, conviene agregar autenticacion antes de dejarla publica.
+Importante: despues de publicar, crea los accesos desde `login.html` o desde `Authentication > Users` en Supabase.
 
 ## Error 404 de Supabase
 

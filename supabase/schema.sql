@@ -1,5 +1,6 @@
 create table if not exists public.loans (
   id text primary key,
+  user_id uuid references auth.users(id) on delete cascade,
   borrower text not null,
   phone text,
   amount numeric not null default 0,
@@ -32,6 +33,14 @@ create table if not exists public.payments (
   note text
 );
 
+-- Migration para proyectos que ya tenian la tabla loans creada antes del login.
+alter table public.loans
+add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+create index if not exists loans_user_id_idx on public.loans(user_id);
+create index if not exists installments_loan_id_idx on public.installments(loan_id);
+create index if not exists payments_loan_id_idx on public.payments(loan_id);
+
 alter table public.loans enable row level security;
 alter table public.installments enable row level security;
 alter table public.payments enable row level security;
@@ -40,25 +49,165 @@ drop policy if exists "prestapp_anon_loans_all" on public.loans;
 drop policy if exists "prestapp_anon_installments_all" on public.installments;
 drop policy if exists "prestapp_anon_payments_all" on public.payments;
 
--- Para una primera version privada sin login, estas politicas permiten leer y escribir
--- con la anon key. Antes de publicar con datos reales, agrega autenticacion.
-create policy "prestapp_anon_loans_all"
+drop policy if exists "prestapp_loans_select_own" on public.loans;
+drop policy if exists "prestapp_loans_insert_own" on public.loans;
+drop policy if exists "prestapp_loans_update_own" on public.loans;
+drop policy if exists "prestapp_loans_delete_own" on public.loans;
+
+drop policy if exists "prestapp_installments_select_own" on public.installments;
+drop policy if exists "prestapp_installments_insert_own" on public.installments;
+drop policy if exists "prestapp_installments_update_own" on public.installments;
+drop policy if exists "prestapp_installments_delete_own" on public.installments;
+
+drop policy if exists "prestapp_payments_select_own" on public.payments;
+drop policy if exists "prestapp_payments_insert_own" on public.payments;
+drop policy if exists "prestapp_payments_update_own" on public.payments;
+drop policy if exists "prestapp_payments_delete_own" on public.payments;
+
+create policy "prestapp_loans_select_own"
 on public.loans
-for all
-to anon
-using (true)
-with check (true);
+for select
+to authenticated
+using (auth.uid() = user_id);
 
-create policy "prestapp_anon_installments_all"
+create policy "prestapp_loans_insert_own"
+on public.loans
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "prestapp_loans_update_own"
+on public.loans
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "prestapp_loans_delete_own"
+on public.loans
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "prestapp_installments_select_own"
 on public.installments
-for all
-to anon
-using (true)
-with check (true);
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = installments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
 
-create policy "prestapp_anon_payments_all"
+create policy "prestapp_installments_insert_own"
+on public.installments
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = installments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
+
+create policy "prestapp_installments_update_own"
+on public.installments
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = installments.loan_id
+      and loans.user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = installments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
+
+create policy "prestapp_installments_delete_own"
+on public.installments
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = installments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
+
+create policy "prestapp_payments_select_own"
 on public.payments
-for all
-to anon
-using (true)
-with check (true);
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = payments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
+
+create policy "prestapp_payments_insert_own"
+on public.payments
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = payments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
+
+create policy "prestapp_payments_update_own"
+on public.payments
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = payments.loan_id
+      and loans.user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = payments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
+
+create policy "prestapp_payments_delete_own"
+on public.payments
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.loans
+    where loans.id = payments.loan_id
+      and loans.user_id = auth.uid()
+  )
+);
+
+-- Si tienes datos reales creados antes del login, asignales un usuario desde Supabase:
+-- update public.loans set user_id = 'ID_DEL_USUARIO' where user_id is null;
