@@ -276,6 +276,8 @@ select:focus {
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 18px;
+  padding: 6px 0 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .page-title h1 {
@@ -287,6 +289,80 @@ select:focus {
 .page-title p {
   margin: 0;
   color: var(--muted);
+}
+
+.module-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-bottom: 8px;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: var(--purple);
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+body[data-page="dashboard"] .module-kicker {
+  background: #e8f8f2;
+  color: var(--green);
+}
+
+body[data-page="loans"] .module-kicker {
+  background: #eef2ff;
+  color: var(--purple);
+}
+
+body[data-page="new-loan"] .module-kicker {
+  background: #fff1e6;
+  color: var(--orange);
+}
+
+body[data-page="clients"] .module-kicker {
+  background: #e8f4ff;
+  color: var(--blue);
+}
+
+body[data-page="payments"] .module-kicker {
+  background: #e6f8f1;
+  color: var(--green);
+}
+
+body[data-page="reports"] .module-kicker {
+  background: #fff4d8;
+  color: var(--amber, #b85d12);
+}
+
+.module-commandbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+}
+
+.module-commandbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 7px;
+  background: var(--surface-soft);
+  color: #24314c;
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.module-commandbar a:hover {
+  background: #eff2ff;
+  color: var(--purple);
 }
 
 .summary-grid {
@@ -435,6 +511,98 @@ select:focus {
 .reports-grid {
   grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
   align-items: start;
+}
+
+body[data-page="loans"] .module-stack {
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  align-items: start;
+}
+
+body[data-page="new-loan"] .single-module-grid,
+body[data-page="clients"] .single-module-grid {
+  grid-template-columns: minmax(0, 760px) minmax(260px, 360px);
+  align-items: start;
+}
+
+body[data-page="payments"] .single-module-grid {
+  grid-template-columns: minmax(300px, 470px) minmax(260px, 360px);
+  align-items: start;
+}
+
+.module-side-panel,
+.module-aside,
+.receipt-panel {
+  position: sticky;
+  top: 84px;
+}
+
+.module-aside .panel-header,
+.receipt-panel .panel-header {
+  margin-bottom: 10px;
+}
+
+.aside-list {
+  display: grid;
+}
+
+.aside-list div {
+  display: grid;
+  gap: 5px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.aside-list div:first-child {
+  border-top: 0;
+}
+
+.aside-list span,
+.receipt-box span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.aside-list strong {
+  font-size: 0.96rem;
+}
+
+.receipt-box {
+  display: grid;
+  gap: 10px;
+  padding: 18px 0 6px;
+  border-top: 1px solid var(--line);
+}
+
+.receipt-box strong {
+  font-size: 1.2rem;
+}
+
+.receipt-box p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+body[data-page="new-loan"] .panel:first-child {
+  border-top: 4px solid var(--orange);
+}
+
+body[data-page="payments"] #paymentPanel {
+  border-top: 4px solid var(--green);
+}
+
+body[data-page="clients"] #clientsPanel {
+  border-top: 4px solid var(--blue);
+}
+
+body[data-page="loans"] #recentLoansPanel {
+  border-top: 4px solid var(--purple);
+}
+
+body[data-page="reports"] #exportPanel {
+  border-top: 4px solid var(--orange);
 }
 
 .panel {
@@ -1006,9 +1174,16 @@ select {
   .dashboard-grid,
   .work-grid,
   .lower-grid,
+  body[data-page="loans"] .module-stack,
   .single-module-grid,
   .reports-grid {
     grid-template-columns: 1fr;
+  }
+
+  .module-side-panel,
+  .module-aside,
+  .receipt-panel {
+    position: static;
   }
 
   .chart-content {
