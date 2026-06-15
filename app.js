@@ -695,7 +695,6 @@ async function loadRemoteState() {
     if (loansError) throw loansError;
 
     if (!loans?.length) {
-      showToast("Supabase conectado");
       return;
     }
 
@@ -717,7 +716,6 @@ async function loadRemoteState() {
     storageSet(SELECTED_LOAN_KEY, selectedLoanId);
     storageSet(STORAGE_KEY, JSON.stringify(state));
     renderAll();
-    showToast("Datos cargados de Supabase");
   } catch (error) {
     handleSupabaseError(error, "cargar datos");
   }
