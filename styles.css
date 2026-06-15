@@ -163,6 +163,31 @@ body[data-page="login"] {
   gap: 14px;
 }
 
+.install-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid #cdd8ef;
+  border-radius: 8px;
+  padding: 0 13px;
+  background: #fff;
+  color: var(--blue);
+  font-size: 0.84rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+}
+
+.install-button:hover {
+  background: #edf6ff;
+  border-color: #b9d7fa;
+}
+
+.auth-panel .install-button {
+  width: 100%;
+}
+
 .dashboard-layout {
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr);
@@ -1491,10 +1516,21 @@ select {
   }
 
   .menu-toggle,
-  .notification-button {
+  .notification-button,
+  .topbar .install-button {
     width: 42px;
     height: 42px;
     flex: 0 0 auto;
+  }
+
+  .topbar .install-button {
+    padding: 0;
+    font-size: 0;
+  }
+
+  .topbar .install-button::before {
+    content: "APP";
+    font-size: 0.7rem;
   }
 
   .search-box input {

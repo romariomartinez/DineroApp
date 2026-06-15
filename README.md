@@ -86,6 +86,8 @@ La app esta preparada como PWA. En Android:
 
 Android agregara el icono de PrestApp en la pantalla principal y se abrira como aplicacion independiente.
 
+Si no aparece la opcion, copia el enlace y abrelo directamente en Chrome. Los navegadores internos de WhatsApp, Facebook o Instagram normalmente no muestran `Instalar app`.
+
 ## Error 404 de Supabase
 
 Si en la consola aparece un `404` apuntando a una URL de Supabase como `/rest/v1/loans`, falta crear las tablas.

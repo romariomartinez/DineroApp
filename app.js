@@ -42,9 +42,23 @@ let activeFilter = new URLSearchParams(window.location.search).get("filter") || 
 let selectedLoanId = "";
 let syncTimer = null;
 let supabaseSchemaReady = Boolean(supabase);
+let deferredInstallPrompt = null;
 
 registerServiceWorker();
+bindInstallApp();
 init();
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  document.querySelectorAll("[data-install-app]").forEach((button) => {
+    button.hidden = true;
+  });
+});
 
 function registerServiceWorker() {
   const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
@@ -54,6 +68,40 @@ function registerServiceWorker() {
       console.warn("No se pudo instalar PrestApp como PWA", error);
     });
   });
+}
+
+function bindInstallApp() {
+  if (isStandaloneApp()) return;
+  const buttonHtml = '<button class="install-button" data-install-app type="button">Instalar app</button>';
+  const topbar = document.querySelector(".topbar");
+  const authForm = q("authForm");
+
+  if (topbar && !topbar.querySelector("[data-install-app]")) {
+    topbar.insertAdjacentHTML("beforeend", buttonHtml);
+  }
+
+  if (authForm && !document.querySelector(".auth-panel [data-install-app]")) {
+    authForm.insertAdjacentHTML("afterend", buttonHtml);
+  }
+
+  document.querySelectorAll("[data-install-app]").forEach((button) => {
+    button.addEventListener("click", handleInstallClick);
+  });
+}
+
+async function handleInstallClick() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    return;
+  }
+
+  showToast("Chrome: menu > Agregar a pantalla principal");
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 
 async function init() {
