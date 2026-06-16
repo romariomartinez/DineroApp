@@ -1634,63 +1634,73 @@ select {
   }
 }
 
-/* ===== LOGIN MODERNO PRESTAPP ===== */
+/* ===== LOGIN PRESTAPP COMPACTO COMO LA IMAGEN ===== */
 
 body[data-page="login"] {
-  background:
-    radial-gradient(circle at top left, rgba(79, 85, 232, 0.22), transparent 34%),
-    linear-gradient(135deg, #edf3fb, #eaf1fb);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: linear-gradient(135deg, #eef3ff, #edf5fb);
 }
 
 .auth-shell {
-    width: min(1220px, 92vw);
-    max-width: 1220px;
-    min-height: 620px;
-    margin: 30px auto;
-    border-radius: 20px;
-    overflow: hidden;
+  width: min(1180px, 92vw);
+  min-height: 620px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 28px 70px rgba(3, 17, 38, 0.16);
 }
 
 .auth-brand {
   border: 0;
   border-radius: 0;
-  padding: 70px 90px;
-  color: white;
-  background:
-    radial-gradient(circle at bottom left, rgba(79, 85, 232, 0.45), transparent 32%),
-    linear-gradient(145deg, #061a3b, #102c86 55%, #4338ca);
+  padding: 95px 90px;
+  color: #fff;
+  background: linear-gradient(145deg, #061a3b 0%, #132c86 58%, #4138c8 100%);
 }
 
 .auth-logo {
-  width: 120px;
-  max-width: 120px;
-  border-radius: 24px;
-  margin-bottom: 30px;
-  background: rgba(255,255,255,0.1);
-}
-
-.auth-brand h1 {
-  color: #fff;
-  font-size: clamp(3.2rem, 6vw, 5.2rem);
-  letter-spacing: -4px;
-}
-
-.auth-brand p {
-  color: rgba(255,255,255,0.9);
-  font-size: 1.45rem;
+  display: block;
+  width: 112px;
+  max-width: 112px;
+  margin: 0 auto 34px;
+  border-radius: 18px;
 }
 
 .auth-brand .module-kicker {
   width: fit-content;
-  background: rgba(255,255,255,0.15);
+  margin: 0 0 34px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.15);
   color: #fff;
-  margin-bottom: 24px;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.auth-brand h1 {
+  margin: 0 0 18px;
+  color: #fff;
+  font-size: 4.1rem;
+  line-height: 0.95;
+  letter-spacing: -3px;
+}
+
+.auth-brand p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.25rem;
 }
 
 .login-features {
   display: grid;
-  gap: 22px;
-  margin-top: 60px;
+  gap: 18px;
+  margin-top: 70px;
 }
 
 .login-features div {
@@ -1699,30 +1709,35 @@ body[data-page="login"] {
 }
 
 .login-features strong {
-  font-size: 1.05rem;
+  color: #fff;
+  font-size: 0.96rem;
 }
 
 .login-features span {
-  color: rgba(255,255,255,0.75);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.86rem;
 }
 
+/* Panel derecho */
 .auth-panel {
   border: 0;
   border-radius: 0;
-  padding: 76px 70px;
-  background: rgba(255,255,255,0.96);
+  padding: 70px 70px;
+  background: #fff;
+  display: grid;
+  align-content: center;
 }
 
 .login-lock {
   display: grid;
   place-items: center;
-  width: 92px;
-  height: 92px;
-  margin: 0 auto 22px;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 28px;
   border-radius: 999px;
-  background: #f5f7ff;
-  box-shadow: 0 12px 30px rgba(79, 85, 232, 0.12);
-  font-size: 2.3rem;
+  background: #f4f6ff;
+  font-size: 1.8rem;
+  box-shadow: 0 16px 34px rgba(79, 85, 232, 0.12);
 }
 
 .auth-panel-header {
@@ -1731,64 +1746,79 @@ body[data-page="login"] {
 }
 
 .auth-panel-header h2 {
-  font-size: 2.1rem;
+  margin: 0 0 10px;
   color: #061a3b;
+  font-size: 2rem;
+  line-height: 1.1;
 }
 
 .auth-panel-header p {
-  font-size: 1.1rem;
+  margin: 0;
+  color: #64708a;
+  font-size: 1rem;
 }
 
 .auth-tabs {
-  margin: 32px 0 24px;
   grid-template-columns: 1fr;
-  padding: 7px;
-  border-radius: 16px;
+  margin: 40px 0 28px;
+  padding: 6px;
+  border-radius: 15px;
+  background: #f5f7fb;
+  border: 1px solid #dce5f3;
 }
 
 .auth-tabs button {
-  min-height: 56px;
+  min-height: 50px;
   border-radius: 12px;
-  color: #4f55e8;
-  font-size: 1rem;
+  background: #fff;
+  color: #248be7;
+  font-weight: 950;
+  box-shadow: 0 8px 18px rgba(14, 31, 68, 0.06);
 }
 
 .auth-form {
-  gap: 22px;
+  display: grid;
+  gap: 18px;
 }
 
 .auth-form label {
-  font-size: 0.9rem;
   color: #061a3b;
+  font-size: 0.82rem;
+  font-weight: 950;
 }
 
 .auth-form input {
-  min-height: 58px;
-  border-radius: 13px;
-  padding: 0 18px;
-  font-size: 1rem;
+  min-height: 52px;
+  border-radius: 12px;
+  padding: 0 16px;
+  border: 1px solid #d5dfef;
+  background: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .auth-form input:focus {
   border-color: #4f55e8;
-  box-shadow: 0 0 0 4px rgba(79, 85, 232, 0.14);
+  box-shadow: 0 0 0 4px rgba(79, 85, 232, 0.12);
 }
 
 .auth-form .primary-button {
-  min-height: 58px;
-  border-radius: 13px;
+  min-height: 52px;
+  margin-top: 2px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #6266f1, #4338ca);
-  font-size: 1rem;
-  box-shadow: 0 14px 24px rgba(67, 56, 202, 0.24);
+  font-weight: 950;
+  box-shadow: 0 14px 28px rgba(67, 56, 202, 0.22);
 }
 
 .login-secure {
-  margin: 34px 0 0;
-  padding-top: 28px;
+  margin: 24px 0 0;
+  padding-top: 22px;
   border-top: 1px solid #e2e8f3;
   text-align: center;
-  color: #64708a;
-  font-weight: 700;
+  color: #52617c;
+  font-size: 0.84rem;
+  font-weight: 900;
 }
 
 @media (max-width: 900px) {
@@ -1798,17 +1828,86 @@ body[data-page="login"] {
   }
 
   .auth-brand {
-    padding: 44px 28px;
+    padding: 36px 28px;
   }
 
   .auth-panel {
-    padding: 42px 24px;
+    padding: 36px 28px;
+  }
+
+  .auth-brand h1 {
+    font-size: 3.1rem;
   }
 
   .login-features {
-    margin-top: 34px;
+    margin-top: 32px;
   }
 }
 
+@media (max-width: 640px) {
+  body[data-page="login"] {
+    padding: 12px;
+  }
 
+  .auth-shell {
+    width: 100%;
+    border-radius: 18px;
+  }
 
+  .auth-brand {
+    display: grid !important;
+    padding: 28px 22px;
+  }
+
+  .auth-logo {
+    width: 86px;
+    max-width: 86px;
+    margin-bottom: 22px;
+  }
+
+  .auth-panel {
+    padding: 30px 22px;
+  }
+}
+
+/* ===== QUITAR SCROLL EN LOGIN ===== */
+
+html,
+body {
+  height: 100%;
+}
+
+body[data-page="login"] {
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  padding: 16px;
+}
+
+body[data-page="login"] .auth-shell {
+  height: calc(100vh - 32px);
+  min-height: 0;
+  max-height: 720px;
+}
+
+body[data-page="login"] .auth-brand,
+body[data-page="login"] .auth-panel {
+  min-height: 0;
+  height: 100%;
+}
+
+body[data-page="login"] .auth-brand {
+  padding: clamp(26px, 5vh, 70px) clamp(32px, 5vw, 80px);
+}
+
+body[data-page="login"] .auth-panel {
+  padding: clamp(26px, 5vh, 60px) clamp(32px, 5vw, 70px);
+}
+
+body[data-page="login"] .auth-brand h1 {
+  font-size: clamp(3rem, 6vh, 4.1rem);
+}
+
+body[data-page="login"] .login-features {
+  margin-top: clamp(28px, 6vh, 60px);
+}
