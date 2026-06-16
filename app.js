@@ -1,4 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { initializeApp } from "firebase/app";
+import {
+  getMessaging,
+  getToken,
+  isSupported,
+  onMessage,
+  onRegistered,
+  register as registerMessaging,
+} from "firebase/messaging";
 
 const STORAGE_KEY = "prestapp-dashboard-v2";
 const SELECTED_LOAN_KEY = "prestapp-selected-loan";
@@ -11,6 +20,15 @@ const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY =
   import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
 const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const FIREBASE_CONFIG = {
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "",
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "",
+  storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || "",
+};
+const FIREBASE_VAPID_KEY = import.meta.env?.VITE_FIREBASE_VAPID_KEY || "";
 const userAdminClient =
   SUPABASE_URL && SUPABASE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -52,6 +70,11 @@ let selectedLoanId = "";
 let syncTimer = null;
 let supabaseSchemaReady = Boolean(supabase);
 let deferredInstallPrompt = null;
+let firebaseApp = null;
+let firebaseMessaging = null;
+let firebaseSupported = null;
+let messagingRegisteredUnsubscribe = null;
+let foregroundMessageUnsubscribe = null;
 
 registerServiceWorker();
 bindInstallApp();
@@ -131,6 +154,7 @@ async function init() {
   storageSet(SELECTED_LOAN_KEY, selectedLoanId);
 
   bindShell();
+  bindNotifications();
   bindSearch();
   bindFilters();
   bindLoanForm();
@@ -214,7 +238,7 @@ async function initAuthenticatedUser() {
 }
 
 function bindAuthModeButtons() {
-  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+  document.querySelectorAll("button[data-auth-mode]").forEach((button) => {
     button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
   });
   setAuthMode("login");
@@ -223,7 +247,7 @@ function bindAuthModeButtons() {
 function setAuthMode(mode) {
   const isBootstrap = mode === "bootstrap";
   document.body.dataset.authMode = mode;
-  document.querySelectorAll("[data-auth-mode]").forEach((button) => {
+  document.querySelectorAll("button[data-auth-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.authMode === mode);
   });
   q("authSubmit").textContent = isBootstrap ? "Crear super usuario" : "Entrar";
@@ -404,6 +428,190 @@ function bindShell() {
   });
 }
 
+function bindNotifications() {
+  const button = document.querySelector(".notification-button");
+  if (!button) return;
+
+  button.type = "button";
+  button.title = "Activar notificaciones en este telefono";
+  button.setAttribute("aria-label", "Activar notificaciones");
+  updateNotificationButton(button);
+  button.addEventListener("click", () => {
+    enablePushNotifications(button).catch((error) => {
+      console.warn("No se pudieron activar las notificaciones", error);
+      showToast(getNotificationErrorMessage(error));
+    });
+  });
+}
+
+function updateNotificationButton(button = document.querySelector(".notification-button")) {
+  if (!button) return;
+  const permission = "Notification" in window ? Notification.permission : "unsupported";
+  button.classList.toggle("is-enabled", permission === "granted");
+  const badge = button.querySelector("span");
+  if (badge) badge.textContent = permission === "granted" ? "ON" : "!";
+}
+
+async function enablePushNotifications(button) {
+  if (!currentUser) {
+    showToast("Entra con tu usuario para activar notificaciones");
+    return false;
+  }
+
+  if (!canUsePushNotifications()) {
+    showToast("Este telefono no soporta notificaciones web");
+    return false;
+  }
+
+  if (!hasFirebaseMessagingConfig()) {
+    showToast("Falta configurar Firebase en Vercel");
+    return false;
+  }
+
+  if (!FIREBASE_VAPID_KEY) {
+    showToast("Falta la VAPID key de Firebase");
+    return false;
+  }
+
+  if (button) button.disabled = true;
+  try {
+    const permission = await Notification.requestPermission();
+    updateNotificationButton(button);
+    if (permission !== "granted") {
+      showToast("Permiso de notificaciones no aceptado");
+      return false;
+    }
+
+    const [messaging, serviceWorkerRegistration] = await Promise.all([
+      getFirebaseMessagingInstance(),
+      ensureServiceWorkerRegistration(),
+    ]);
+    if (!serviceWorkerRegistration) {
+      showToast("No se pudo activar el servicio del telefono");
+      return false;
+    }
+
+    const registeredId = await registerFirebaseMessaging(messaging, serviceWorkerRegistration);
+    let legacyToken = "";
+    try {
+      legacyToken = await getToken(messaging, {
+        vapidKey: FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration,
+      });
+    } catch (error) {
+      console.warn("Firebase no entrego token heredado; se usara FID si esta disponible", error);
+    }
+    if (legacyToken) await saveNotificationRegistration(legacyToken, "token");
+
+    if (!registeredId && !legacyToken) {
+      showToast("No se pudo registrar este telefono");
+      return false;
+    }
+
+    updateNotificationButton(button);
+    showToast("Notificaciones activadas");
+    return true;
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function canUsePushNotifications() {
+  return Boolean(window.isSecureContext && "Notification" in window && "serviceWorker" in navigator);
+}
+
+function hasFirebaseMessagingConfig() {
+  return Boolean(
+    FIREBASE_CONFIG.apiKey &&
+      FIREBASE_CONFIG.projectId &&
+      FIREBASE_CONFIG.messagingSenderId &&
+      FIREBASE_CONFIG.appId
+  );
+}
+
+async function getFirebaseMessagingInstance() {
+  if (firebaseMessaging) return firebaseMessaging;
+  if (firebaseSupported === null) firebaseSupported = await isSupported();
+  if (!firebaseSupported) throw new Error("messaging-not-supported");
+
+  firebaseApp = firebaseApp || initializeApp(FIREBASE_CONFIG);
+  firebaseMessaging = getMessaging(firebaseApp);
+  if (!foregroundMessageUnsubscribe) {
+    foregroundMessageUnsubscribe = onMessage(firebaseMessaging, (payload) => {
+      const title = payload?.notification?.title || payload?.data?.title || "Nueva notificacion";
+      showToast(title);
+    });
+  }
+  return firebaseMessaging;
+}
+
+async function ensureServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator)) return null;
+  const existing = await navigator.serviceWorker.getRegistration("/");
+  if (existing) return existing;
+  return navigator.serviceWorker.register("/service-worker.js");
+}
+
+async function registerFirebaseMessaging(messaging, serviceWorkerRegistration) {
+  let resolved = false;
+  const registeredIdPromise = new Promise((resolve) => {
+    const timeout = window.setTimeout(() => {
+      if (!resolved) resolve("");
+    }, 2500);
+
+    messagingRegisteredUnsubscribe?.();
+    messagingRegisteredUnsubscribe = onRegistered(messaging, async (registrationId) => {
+      resolved = true;
+      window.clearTimeout(timeout);
+      try {
+        await saveNotificationRegistration(registrationId, "fid");
+      } catch (error) {
+        console.warn("No se pudo guardar el FID de Firebase", error);
+      }
+      resolve(registrationId);
+    });
+  });
+
+  await registerMessaging(messaging, {
+    vapidKey: FIREBASE_VAPID_KEY,
+    serviceWorkerRegistration,
+  });
+
+  return registeredIdPromise;
+}
+
+async function saveNotificationRegistration(registrationId, registrationType) {
+  if (!supabase || !currentUser || !registrationId) return false;
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("notification_tokens").upsert(
+    {
+      user_id: currentUser.id,
+      registration_id: registrationId,
+      registration_type: registrationType,
+      device_label: getDeviceLabel(),
+      user_agent: navigator.userAgent || "",
+      updated_at: now,
+      last_seen_at: now,
+    },
+    { onConflict: "user_id,registration_id" }
+  );
+  if (error) throw error;
+  return true;
+}
+
+function getDeviceLabel() {
+  const platform = navigator.userAgentData?.platform || navigator.platform || "Telefono";
+  const standalone = isStandaloneApp() ? "app" : "navegador";
+  return `${platform} - ${standalone}`;
+}
+
+function getNotificationErrorMessage(error) {
+  if (isMissingNotificationsSetup(error)) return "Falta actualizar notificaciones: ejecuta supabase/schema.sql";
+  if (getErrorText(error).includes("messaging-not-supported")) return "Este telefono no soporta Firebase";
+  if (error?.message) return error.message;
+  return "No se pudieron activar notificaciones";
+}
+
 function bindSearch() {
   q("searchInput")?.addEventListener("input", () => {
     renderLoansTable();
@@ -527,8 +735,9 @@ function bindPaymentForm() {
   });
   q("paymentInstallmentSelect")?.addEventListener("change", fillSelectedInstallmentAmount);
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const submitButton = event.submitter;
     const loan = state.loans.find((item) => item.id === q("paymentLoanSelect").value);
     const installmentId = q("paymentInstallmentSelect").value;
     const amount = numberFrom(q("paymentAmount").value);
@@ -537,18 +746,94 @@ function bindPaymentForm() {
       return;
     }
 
-    const applied = applyPayment(loan, installmentId, amount, {
-      date: q("paymentDate").value || todayIso,
-      method: q("paymentMethod").value,
-      note: q("paymentNote").value.trim(),
-    });
+    if (submitButton) submitButton.disabled = true;
+    try {
+      const payment = applyPayment(loan, installmentId, amount, {
+        date: q("paymentDate").value || todayIso,
+        method: q("paymentMethod").value,
+        note: q("paymentNote").value.trim(),
+      });
 
-    selectLoan(loan.id);
-    storageRemove(SELECTED_INSTALLMENT_KEY);
-    saveState();
-    renderAll();
-    showToast(`Pago registrado por ${formatMoney(applied)}`);
+      selectLoan(loan.id);
+      storageRemove(SELECTED_INSTALLMENT_KEY);
+      await saveState({ immediate: true });
+      renderAll();
+      queuePaymentNotification(loan, payment).catch((error) => {
+        console.warn("No se pudo enviar la notificacion del pago", error);
+      });
+      showToast(`Pago registrado por ${formatMoney(payment.amount)}`);
+    } catch (error) {
+      handleSupabaseError(error, "guardar pago");
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
   });
+}
+
+async function queuePaymentNotification(loan, payment) {
+  if (!supabase || !currentUser || !loan || !payment) return false;
+  const summary = getLoanSummary(loan);
+  const title = "Pago registrado";
+  const body = `${loan.borrower}: abono de ${formatMoney(payment.amount)}. Saldo ${formatMoney(summary.remaining)}.`;
+  const payload = {
+    type: "payment_registered",
+    loanId: loan.id,
+    paymentId: payment.id,
+    borrower: loan.borrower,
+    phone: loan.phone || "",
+    amount: String(payment.amount),
+    balance: String(summary.remaining),
+    date: payment.date,
+    url: "/pagos.html",
+  };
+
+  const { data, error } = await supabase
+    .from("notification_events")
+    .insert({
+      user_id: currentUser.id,
+      loan_id: loan.id,
+      payment_id: payment.id,
+      borrower: loan.borrower,
+      borrower_phone: loan.phone || null,
+      title,
+      body,
+      payload,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    if (isMissingNotificationsSetup(error)) return false;
+    throw error;
+  }
+
+  if (data?.id) {
+    triggerPaymentNotificationSend(data.id).catch((sendError) => {
+      console.warn("La notificacion quedo pendiente de envio", sendError);
+    });
+  }
+  return true;
+}
+
+async function triggerPaymentNotificationSend(eventId) {
+  if (!eventId || !supabase) return false;
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.access_token) return false;
+
+  const response = await fetch("/api/send-payment-notification", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${data.session.access_token}`,
+    },
+    body: JSON.stringify({ eventId }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "No se pudo enviar la notificacion");
+  }
+  return true;
 }
 
 function bindEditForm() {
@@ -1287,14 +1572,15 @@ function applyPayment(loan, installmentId, amount, details) {
     if (installment.paid >= installment.amount) installment.paidDate = details.date;
   }
 
-  loan.payments.push({
+  const payment = {
     id: uid(),
     amount: appliedTotal,
     date: details.date,
     method: details.method,
     note: details.note,
-  });
-  return appliedTotal;
+  };
+  loan.payments.push(payment);
+  return payment;
 }
 
 function fillSelectedInstallmentAmount() {
@@ -1504,7 +1790,12 @@ function fromDbPayment(payment) {
 
 function handleSupabaseError(error, action) {
   const message = getSupabaseErrorMessage(error);
-  if (isMissingSupabaseTable(error) || isMissingUserColumn(error) || isMissingProfilesSetup(error)) {
+  if (
+    isMissingSupabaseTable(error) ||
+    isMissingUserColumn(error) ||
+    isMissingProfilesSetup(error) ||
+    isMissingNotificationsSetup(error)
+  ) {
     supabaseSchemaReady = false;
   }
   console.warn(`Supabase: no se pudo ${action}. ${message}`, error);
@@ -1512,6 +1803,7 @@ function handleSupabaseError(error, action) {
 }
 
 function getSupabaseErrorMessage(error) {
+  if (isMissingNotificationsSetup(error)) return "Falta actualizar notificaciones: ejecuta supabase/schema.sql";
   if (isMissingSupabaseTable(error)) return "Faltan tablas en Supabase: ejecuta supabase/schema.sql";
   if (isMissingUserColumn(error)) return "Falta actualizar Supabase: ejecuta supabase/schema.sql";
   if (isMissingProfilesSetup(error)) return "Falta actualizar usuarios: ejecuta supabase/schema.sql";
@@ -1536,6 +1828,11 @@ function isMissingUserColumn(error) {
 function isMissingProfilesSetup(error) {
   const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
   return text.includes("profiles") || text.includes("has_profiles");
+}
+
+function isMissingNotificationsSetup(error) {
+  const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
+  return text.includes("notification_tokens") || text.includes("notification_events");
 }
 
 function isInvalidLogin(error) {

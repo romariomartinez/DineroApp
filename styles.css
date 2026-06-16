@@ -440,6 +440,12 @@ select:focus {
   font-size: 0.76rem;
 }
 
+.notification-button.is-enabled span {
+  width: 24px;
+  background: var(--green);
+  font-size: 0.62rem;
+}
+
 .content {
   width: min(1240px, calc(100% - 36px));
   margin: 0 auto;

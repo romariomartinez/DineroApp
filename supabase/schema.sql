@@ -42,6 +42,35 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.notification_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  registration_id text not null,
+  registration_type text not null default 'token' check (registration_type in ('token', 'fid')),
+  device_label text,
+  user_agent text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  unique (user_id, registration_id)
+);
+
+create table if not exists public.notification_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  loan_id text references public.loans(id) on delete set null,
+  payment_id text,
+  borrower text,
+  borrower_phone text,
+  title text not null,
+  body text not null,
+  payload jsonb not null default '{}'::jsonb,
+  status text not null default 'pending' check (status in ('pending', 'processing', 'sent', 'failed')),
+  error_message text,
+  created_at timestamptz not null default now(),
+  sent_at timestamptz
+);
+
 -- Migration para proyectos que ya tenian la tabla loans creada antes del login.
 alter table public.loans
 add column if not exists user_id uuid references auth.users(id) on delete cascade;
@@ -50,6 +79,8 @@ create index if not exists loans_user_id_idx on public.loans(user_id);
 create index if not exists installments_loan_id_idx on public.installments(loan_id);
 create index if not exists payments_loan_id_idx on public.payments(loan_id);
 create index if not exists profiles_username_idx on public.profiles(username);
+create index if not exists notification_tokens_user_id_idx on public.notification_tokens(user_id);
+create index if not exists notification_events_user_status_idx on public.notification_events(user_id, status);
 
 create or replace function public.is_superuser()
 returns boolean
@@ -79,6 +110,8 @@ alter table public.loans enable row level security;
 alter table public.installments enable row level security;
 alter table public.payments enable row level security;
 alter table public.profiles enable row level security;
+alter table public.notification_tokens enable row level security;
+alter table public.notification_events enable row level security;
 
 drop policy if exists "prestapp_anon_loans_all" on public.loans;
 drop policy if exists "prestapp_anon_installments_all" on public.installments;
@@ -87,6 +120,15 @@ drop policy if exists "prestapp_anon_payments_all" on public.payments;
 drop policy if exists "prestapp_profiles_select" on public.profiles;
 drop policy if exists "prestapp_profiles_insert" on public.profiles;
 drop policy if exists "prestapp_profiles_update" on public.profiles;
+
+drop policy if exists "prestapp_notification_tokens_select_own" on public.notification_tokens;
+drop policy if exists "prestapp_notification_tokens_insert_own" on public.notification_tokens;
+drop policy if exists "prestapp_notification_tokens_update_own" on public.notification_tokens;
+drop policy if exists "prestapp_notification_tokens_delete_own" on public.notification_tokens;
+
+drop policy if exists "prestapp_notification_events_select_own" on public.notification_events;
+drop policy if exists "prestapp_notification_events_insert_own" on public.notification_events;
+drop policy if exists "prestapp_notification_events_update_own" on public.notification_events;
 
 drop policy if exists "prestapp_loans_select_own" on public.loans;
 drop policy if exists "prestapp_loans_insert_own" on public.loans;
@@ -129,6 +171,50 @@ for update
 to authenticated
 using (public.is_superuser())
 with check (public.is_superuser());
+
+create policy "prestapp_notification_tokens_select_own"
+on public.notification_tokens
+for select
+to authenticated
+using (auth.uid() = user_id or public.is_superuser());
+
+create policy "prestapp_notification_tokens_insert_own"
+on public.notification_tokens
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "prestapp_notification_tokens_update_own"
+on public.notification_tokens
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "prestapp_notification_tokens_delete_own"
+on public.notification_tokens
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "prestapp_notification_events_select_own"
+on public.notification_events
+for select
+to authenticated
+using (auth.uid() = user_id or public.is_superuser());
+
+create policy "prestapp_notification_events_insert_own"
+on public.notification_events
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "prestapp_notification_events_update_own"
+on public.notification_events
+for update
+to authenticated
+using (auth.uid() = user_id or public.is_superuser())
+with check (auth.uid() = user_id or public.is_superuser());
 
 create policy "prestapp_loans_select_own"
 on public.loans

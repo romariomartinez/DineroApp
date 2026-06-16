@@ -1,4 +1,4 @@
-const CACHE_NAME = "prestapp-shell-v3";
+const CACHE_NAME = "prestapp-shell-v4";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -44,5 +44,42 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => caches.match(request).then((cached) => cached || caches.match("/index.html")))
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (error) {
+    payload = { title: "PrestApp", body: event.data?.text() || "" };
+  }
+
+  const notification = payload.notification || {};
+  const data = payload.data || {};
+  const title = notification.title || payload.title || data.title || "PrestApp";
+  const url = notification.click_action || payload.fcm_options?.link || data.url || "/index.html";
+  const options = {
+    body: notification.body || payload.body || data.body || "",
+    icon: notification.icon || "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: { ...data, url },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || "/index.html", self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === targetUrl && "focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+      return undefined;
+    })
   );
 });

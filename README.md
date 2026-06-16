@@ -27,6 +27,34 @@ VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=TU_LLAVE_PUBLICA
 ```
 
+## Notificaciones Firebase
+
+La app registra el telefono con Firebase Cloud Messaging y guarda el dispositivo en Supabase. Cuando se registra un pago, PrestApp crea un evento de notificacion y llama la funcion de Vercel `api/send-payment-notification.js` para enviarlo con Firebase Admin.
+
+Importante: las notificaciones solo llegan a telefonos que abrieron PrestApp, iniciaron sesion y tocaron el boton de notificaciones para aceptar permisos. Para clientes externos que no tienen acceso a la app, hace falta crearles un acceso propio o un enlace de registro.
+
+En Firebase:
+
+1. Crea un proyecto en Firebase.
+2. Agrega una app Web.
+3. Copia la configuracion web a las variables `VITE_FIREBASE_*`.
+4. Ve a `Cloud Messaging > Web Push certificates` y genera/copia la VAPID key publica.
+5. Ve a `Project settings > Service accounts` y genera una llave privada JSON.
+
+En Vercel agrega tambien estas variables privadas:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
+- `APP_BASE_URL`
+
+La `FIREBASE_PRIVATE_KEY` debe quedar con saltos `\n`, por ejemplo:
+
+```bash
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nTU_LLAVE\n-----END PRIVATE KEY-----\n"
+```
+
 ## Desarrollo local
 
 En PowerShell, si `npm` falla por politicas de ejecucion, usa `npm.cmd`.
@@ -85,6 +113,18 @@ where user_id is null;
 4. Agrega estas variables:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_FIREBASE_VAPID_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `FIREBASE_PROJECT_ID`
+   - `FIREBASE_CLIENT_EMAIL`
+   - `FIREBASE_PRIVATE_KEY`
+   - `APP_BASE_URL`
 5. Deploy.
 
 Importante: despues de publicar, crea los accesos desde `login.html` o desde `Authentication > Users` en Supabase.
