@@ -1015,7 +1015,7 @@ function renderLoansTable() {
       <tr>
         <td>${escapeHtml(loan.borrower)}</td>
         <td>${formatMoney(loan.amount)}</td>
-        <td>${loan.interestRate}%</td>
+        <td>${loan.interestRate}% ${getInterestTypeLabel(loan.interestType)}</td>
         <td>${formatMoney(summary.total)}</td>
         <td>${formatMoney(summary.paid)}</td>
         <td>${formatMoney(summary.remaining)}</td>
@@ -1104,7 +1104,10 @@ function renderSelectedLoan() {
   q("editSelectedLoanBtn").disabled = false;
   summaryBox.innerHTML = `
     <div><span>Monto</span><strong>${formatMoney(loan.amount)}</strong></div>
-    <div><span>Interes</span><strong>${loan.interestRate}%</strong></div>
+    <div><span>Tipo interes</span><strong>${getInterestTypeLabel(loan.interestType)}</strong></div>
+    <div><span>Tasa</span><strong>${loan.interestRate}%</strong></div>
+    <div><span>Interes mensual</span><strong>${formatMoney(summary.monthlyInterest)}</strong></div>
+    <div><span>Interes total</span><strong>${formatMoney(summary.interest)}</strong></div>
     <div><span>Total a cobrar</span><strong>${formatMoney(summary.total)}</strong></div>
     <div><span>Plazo</span><strong>${loan.termDays} dias</strong></div>
     <div><span>Vence</span><strong>${formatDate(lastDue)}</strong></div>
@@ -1227,8 +1230,14 @@ function updatePreview() {
   if (!q("previewInterest")) return;
   const amount = numberFrom(q("amount").value);
   const rate = numberFrom(q("interestRate").value);
+  const termDays = clampTermDays(q("termDays").value);
+  const interestType = normalizeInterestType(q("interestType")?.value);
   const count = Math.max(1, Number(q("installmentsCount").value || 1));
-  const totals = calculateTotals(amount, rate, count);
+  const totals = calculateTotals(amount, rate, count, termDays, interestType);
+  if (q("previewBaseInterestLabel")) {
+    q("previewBaseInterestLabel").textContent = interestType === "mensual" ? "Interes mensual" : "Interes unico";
+  }
+  if (q("previewMonthlyInterest")) q("previewMonthlyInterest").textContent = formatMoney(totals.monthlyInterest);
   q("previewInterest").textContent = formatMoney(totals.interest);
   q("previewTotal").textContent = formatMoney(totals.total);
   q("previewCount").textContent = count;
@@ -1426,16 +1435,18 @@ function clearPendingDeletedLoanIds(loanIds) {
 function createLoanFromForm() {
   const amount = numberFrom(q("amount").value);
   const interestRate = numberFrom(q("interestRate").value);
+  const interestType = normalizeInterestType(q("interestType")?.value);
   const termDays = clampTermDays(q("termDays").value);
   const installmentsCount = Math.max(1, Number(q("installmentsCount").value));
   const startDate = q("startDate").value || todayIso;
-  const totals = calculateTotals(amount, interestRate, installmentsCount);
+  const totals = calculateTotals(amount, interestRate, installmentsCount, termDays, interestType);
   return {
     id: uid(),
     borrower: q("borrower").value.trim(),
     phone: q("phone").value.trim(),
     amount,
     interestRate,
+    interestType,
     termDays,
     installmentsCount,
     startDate,
@@ -1447,11 +1458,15 @@ function createLoanFromForm() {
   };
 }
 
-function calculateTotals(amount, interestRate, installmentsCount) {
-  const interest = Math.round(amount * (interestRate / 100));
+function calculateTotals(amount, interestRate, installmentsCount, termDays = 30, interestType = "unico") {
+  const monthlyInterest = Math.round(amount * (interestRate / 100));
+  const termMonths = getTermMonths(termDays);
+  const interest = normalizeInterestType(interestType) === "mensual"
+    ? Math.round(monthlyInterest * termMonths)
+    : monthlyInterest;
   const total = amount + interest;
   const installment = Math.ceil(total / Math.max(1, installmentsCount));
-  return { interest, total, installment };
+  return { monthlyInterest, interest, total, installment, termMonths };
 }
 
 function buildSchedule(total, count, startDate, termDays) {
@@ -1472,6 +1487,7 @@ function buildSchedule(total, count, startDate, termDays) {
 function normalizeLoan(loan) {
   return {
     ...loan,
+    interestType: normalizeInterestType(loan.interestType || loan.interest_type),
     termDays: clampTermDays(loan.termDays || loan.term_days || 30),
     paymentFrequency: loan.paymentFrequency || "Quincenal",
     payments: Array.isArray(loan.payments) ? loan.payments : [],
@@ -1518,6 +1534,7 @@ function openEditDialog(loan) {
   q("editPhone").value = loan.phone || "";
   q("editAmount").value = loan.amount;
   q("editInterestRate").value = loan.interestRate;
+  q("editInterestType").value = normalizeInterestType(loan.interestType);
   q("editTermDays").value = loan.termDays;
   q("editPaymentFrequency").value = loan.paymentFrequency || "Quincenal";
   q("editInstallmentsCount").value = loan.installmentsCount || loan.installments.length || 1;
@@ -1536,15 +1553,17 @@ function updateLoanFromEditForm(loan) {
   const lastPaymentDate = lastPayment?.date || lastPaidInstallment?.paidDate || todayIso;
   const amount = numberFrom(q("editAmount").value);
   const interestRate = numberFrom(q("editInterestRate").value);
+  const interestType = normalizeInterestType(q("editInterestType").value);
   const termDays = clampTermDays(q("editTermDays").value);
   const installmentsCount = Math.max(1, Number(q("editInstallmentsCount").value));
   const startDate = q("editStartDate").value || todayIso;
-  const totals = calculateTotals(amount, interestRate, installmentsCount);
+  const totals = calculateTotals(amount, interestRate, installmentsCount, termDays, interestType);
 
   loan.borrower = q("editBorrower").value.trim();
   loan.phone = q("editPhone").value.trim();
   loan.amount = amount;
   loan.interestRate = interestRate;
+  loan.interestType = interestType;
   loan.termDays = termDays;
   loan.installmentsCount = installmentsCount;
   loan.startDate = startDate;
@@ -1612,10 +1631,22 @@ function deleteClient(clientKey, clientName) {
 }
 
 function getLoanSummary(loan) {
-  const interest = Math.round(loan.amount * (loan.interestRate / 100));
-  const total = loan.amount + interest;
+  const totals = calculateTotals(
+    Number(loan.amount || 0),
+    Number(loan.interestRate || 0),
+    Math.max(1, Number(loan.installmentsCount || loan.installments?.length || 1)),
+    clampTermDays(loan.termDays || 30),
+    normalizeInterestType(loan.interestType)
+  );
   const paid = loan.installments.reduce((sum, item) => sum + Number(item.paid || 0), 0);
-  return { interest, total, paid, remaining: Math.max(0, total - paid) };
+  return {
+    monthlyInterest: totals.monthlyInterest,
+    termMonths: totals.termMonths,
+    interest: totals.interest,
+    total: totals.total,
+    paid,
+    remaining: Math.max(0, totals.total - paid),
+  };
 }
 
 function getLoanStatus(loan) {
@@ -1686,7 +1717,10 @@ function exportCsv() {
       loan.borrower,
       loan.phone,
       loan.amount,
+      getInterestTypeLabel(loan.interestType),
       `${loan.interestRate}%`,
+      summary.monthlyInterest,
+      summary.interest,
       summary.total,
       summary.paid,
       summary.remaining,
@@ -1696,7 +1730,21 @@ function exportCsv() {
     ];
   });
 
-  const header = ["Cliente", "Celular", "Monto", "Interes", "Total a cobrar", "Pagado", "Saldo", "Plazo dias", "Forma de pago", "Estado"];
+  const header = [
+    "Cliente",
+    "Celular",
+    "Monto",
+    "Tipo interes",
+    "Tasa",
+    "Interes mensual",
+    "Interes total",
+    "Total a cobrar",
+    "Pagado",
+    "Saldo",
+    "Plazo dias",
+    "Forma de pago",
+    "Estado",
+  ];
   const csv = [header, ...rows].map((row) => row.map(csvCell).join(";")).join("\n");
   const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -1723,6 +1771,7 @@ function toDbLoan(loan) {
     phone: loan.phone,
     amount: loan.amount,
     interest_rate: loan.interestRate,
+    interest_type: normalizeInterestType(loan.interestType),
     term_days: loan.termDays,
     installments_count: loan.installmentsCount,
     start_date: loan.startDate,
@@ -1763,6 +1812,7 @@ function fromDbLoan(loan, installments, payments) {
     phone: loan.phone || "",
     amount: Number(loan.amount || 0),
     interestRate: Number(loan.interest_rate || 0),
+    interestType: normalizeInterestType(loan.interest_type),
     termDays: clampTermDays(loan.term_days || 30),
     installmentsCount: Number(loan.installments_count || 1),
     startDate: loan.start_date,
@@ -1801,6 +1851,7 @@ function handleSupabaseError(error, action) {
   if (
     isMissingSupabaseTable(error) ||
     isMissingUserColumn(error) ||
+    isMissingLoanSchemaSetup(error) ||
     isMissingProfilesSetup(error) ||
     isMissingNotificationsSetup(error)
   ) {
@@ -1813,6 +1864,7 @@ function handleSupabaseError(error, action) {
 function getSupabaseErrorMessage(error) {
   if (isMissingNotificationsSetup(error)) return "Falta actualizar notificaciones: ejecuta supabase/schema.sql";
   if (isMissingSupabaseTable(error)) return "Faltan tablas en Supabase: ejecuta supabase/schema.sql";
+  if (isMissingLoanSchemaSetup(error)) return "Falta actualizar prestamos: ejecuta supabase/schema.sql";
   if (isMissingUserColumn(error)) return "Falta actualizar Supabase: ejecuta supabase/schema.sql";
   if (isMissingProfilesSetup(error)) return "Falta actualizar usuarios: ejecuta supabase/schema.sql";
   if (isInvalidLogin(error)) return "Usuario o clave incorrectos. Si es primera vez, toca Crear super usuario.";
@@ -1831,6 +1883,11 @@ function isMissingSupabaseTable(error) {
 function isMissingUserColumn(error) {
   const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
   return text.includes("user_id") && (text.includes("column") || text.includes("schema cache"));
+}
+
+function isMissingLoanSchemaSetup(error) {
+  const text = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""}`;
+  return text.includes("interest_type") || text.includes("loans_interest_type_check");
 }
 
 function isMissingProfilesSetup(error) {
@@ -1874,6 +1931,18 @@ function clampTermDays(value) {
   const days = Number(value);
   if (!Number.isFinite(days)) return 30;
   return Math.min(120, Math.max(1, Math.round(days)));
+}
+
+function getTermMonths(termDays) {
+  return clampTermDays(termDays) / 30;
+}
+
+function normalizeInterestType(value) {
+  return value === "mensual" ? "mensual" : "unico";
+}
+
+function getInterestTypeLabel(value) {
+  return normalizeInterestType(value) === "mensual" ? "Mensual" : "Unico";
 }
 
 function formatMoney(value) {

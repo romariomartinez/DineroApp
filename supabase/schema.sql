@@ -5,6 +5,7 @@ create table if not exists public.loans (
   phone text,
   amount numeric not null default 0,
   interest_rate numeric not null default 0,
+  interest_type text not null default 'unico' constraint loans_interest_type_check check (interest_type in ('mensual', 'unico')),
   term_days integer not null constraint loans_term_days_check check (term_days between 1 and 120),
   installments_count integer not null default 1,
   start_date date not null,
@@ -76,10 +77,19 @@ alter table public.loans
 add column if not exists user_id uuid references auth.users(id) on delete cascade;
 
 alter table public.loans
+add column if not exists interest_type text not null default 'unico';
+
+alter table public.loans
 drop constraint if exists loans_term_days_check;
 
 alter table public.loans
 add constraint loans_term_days_check check (term_days between 1 and 120);
+
+alter table public.loans
+drop constraint if exists loans_interest_type_check;
+
+alter table public.loans
+add constraint loans_interest_type_check check (interest_type in ('mensual', 'unico'));
 
 create index if not exists loans_user_id_idx on public.loans(user_id);
 create index if not exists installments_loan_id_idx on public.installments(loan_id);

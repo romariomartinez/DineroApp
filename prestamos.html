@@ -93,7 +93,8 @@
         <input id="editLoanId" type="hidden" />
         <div class="form-row"><label>Cliente<input id="editBorrower" type="text" required /></label><label>Celular<input id="editPhone" type="tel" /></label></div>
         <div class="form-row"><label>Monto prestado<input id="editAmount" type="number" min="1000" step="1000" required /></label><label>Porcentaje (%)<input id="editInterestRate" type="number" min="0" step="0.1" required /></label></div>
-        <div class="form-row"><label>Plazo en dias<input id="editTermDays" type="number" min="1" max="120" step="1" required /></label><label>Forma de pago<select id="editPaymentFrequency"><option>Semanal</option><option>Quincenal</option><option>Mensual</option></select></label></div>
+        <div class="form-row"><label>Tipo de interes<select id="editInterestType"><option value="unico">Unico</option><option value="mensual">Mensual</option></select></label><label>Plazo en dias<input id="editTermDays" type="number" min="1" max="120" step="1" required /></label></div>
+        <div class="form-row"><label>Forma de pago<select id="editPaymentFrequency"><option>Semanal</option><option>Quincenal</option><option>Mensual</option></select></label></div>
         <div class="form-row"><label>Numero de cuotas<input id="editInstallmentsCount" type="number" min="1" max="24" step="1" required /></label><label>Inicio<input id="editStartDate" type="date" required /></label></div>
         <div class="dialog-note">Al editar plazo, fecha o cuotas, el sistema recalcula el calendario y conserva el dinero ya pagado.</div>
         <menu class="dialog-actions"><button class="ghost-button" value="cancel" type="submit">Cancelar</button><button class="primary-button" value="save" type="submit">Guardar cambios</button></menu>
