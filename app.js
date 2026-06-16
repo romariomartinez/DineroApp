@@ -1419,7 +1419,7 @@ function clearPendingDeletedLoanIds(loanIds) {
 function createLoanFromForm() {
   const amount = numberFrom(q("amount").value);
   const interestRate = numberFrom(q("interestRate").value);
-  const termDays = Number(q("termDays").value);
+  const termDays = clampTermDays(q("termDays").value);
   const installmentsCount = Math.max(1, Number(q("installmentsCount").value));
   const startDate = q("startDate").value || todayIso;
   const totals = calculateTotals(amount, interestRate, installmentsCount);
@@ -1454,7 +1454,7 @@ function buildSchedule(total, count, startDate, termDays) {
     return {
       id: uid(),
       number,
-      dueDate: addDays(startDate, Math.round((termDays / count) * number)),
+      dueDate: addDays(startDate, Math.max(1, Math.round((termDays / count) * number))),
       amount: number === count ? total - base * (count - 1) : base,
       paid: 0,
       paidDate: "",
@@ -1465,6 +1465,7 @@ function buildSchedule(total, count, startDate, termDays) {
 function normalizeLoan(loan) {
   return {
     ...loan,
+    termDays: clampTermDays(loan.termDays || loan.term_days || 30),
     paymentFrequency: loan.paymentFrequency || "Quincenal",
     payments: Array.isArray(loan.payments) ? loan.payments : [],
     installments: Array.isArray(loan.installments)
@@ -1528,7 +1529,7 @@ function updateLoanFromEditForm(loan) {
   const lastPaymentDate = lastPayment?.date || lastPaidInstallment?.paidDate || todayIso;
   const amount = numberFrom(q("editAmount").value);
   const interestRate = numberFrom(q("editInterestRate").value);
-  const termDays = Number(q("editTermDays").value);
+  const termDays = clampTermDays(q("editTermDays").value);
   const installmentsCount = Math.max(1, Number(q("editInstallmentsCount").value));
   const startDate = q("editStartDate").value || todayIso;
   const totals = calculateTotals(amount, interestRate, installmentsCount);
@@ -1755,7 +1756,7 @@ function fromDbLoan(loan, installments, payments) {
     phone: loan.phone || "",
     amount: Number(loan.amount || 0),
     interestRate: Number(loan.interest_rate || 0),
-    termDays: Number(loan.term_days || 30),
+    termDays: clampTermDays(loan.term_days || 30),
     installmentsCount: Number(loan.installments_count || 1),
     startDate: loan.start_date,
     paymentFrequency: loan.payment_frequency || "Quincenal",
@@ -1860,6 +1861,12 @@ function getErrorText(error) {
 
 function numberFrom(value) {
   return Number(value || 0);
+}
+
+function clampTermDays(value) {
+  const days = Number(value);
+  if (!Number.isFinite(days)) return 30;
+  return Math.min(120, Math.max(1, Math.round(days)));
 }
 
 function formatMoney(value) {

@@ -45,7 +45,7 @@
               <form id="loanForm" class="loan-form">
                 <div class="form-row"><label>Cliente<input id="borrower" name="borrower" type="text" placeholder="Juan Perez" required /></label><label>Celular<input id="phone" name="phone" type="tel" placeholder="3001234567" /></label></div>
                 <div class="form-row"><label>Monto prestado<input id="amount" name="amount" type="number" min="1000" step="1000" value="500000" required /></label><label>Porcentaje (%)<input id="interestRate" name="interestRate" type="number" min="0" step="0.1" value="10" required /></label></div>
-                <div class="form-row"><label>Plazo<select id="termDays" name="termDays"><option value="30">30 dias</option><option value="45" selected>45 dias</option><option value="60">60 dias</option></select></label><label>Forma de pago<select id="paymentFrequency" name="paymentFrequency"><option>Semanal</option><option selected>Quincenal</option><option>Mensual</option></select></label></div>
+                <div class="form-row"><label>Plazo en dias<input id="termDays" name="termDays" type="number" min="1" max="120" step="1" value="45" required /></label><label>Forma de pago<select id="paymentFrequency" name="paymentFrequency"><option>Semanal</option><option selected>Quincenal</option><option>Mensual</option></select></label></div>
                 <div class="form-row"><label>Numero de cuotas<input id="installmentsCount" name="installmentsCount" type="number" min="1" max="24" step="1" value="4" required /></label><label>Inicio<input id="startDate" name="startDate" type="date" required /></label></div>
                 <div class="calculation-box">
                   <div><span>Ganancia</span><strong class="green-text" id="previewInterest">$50.000</strong></div>
@@ -59,7 +59,7 @@
             <aside class="panel module-aside">
               <div class="panel-header"><h2>Resumen operativo</h2></div>
               <div class="aside-list">
-                <div><span>Plazos</span><strong>30 / 45 / 60 dias</strong></div>
+                <div><span>Plazos</span><strong>1 a 120 dias</strong></div>
                 <div><span>Pagos</span><strong>Semanal, quincenal o mensual</strong></div>
                 <div><span>Registro</span><strong>Cuotas automaticas</strong></div>
               </div>

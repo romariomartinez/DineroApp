@@ -5,7 +5,7 @@ create table if not exists public.loans (
   phone text,
   amount numeric not null default 0,
   interest_rate numeric not null default 0,
-  term_days integer not null check (term_days in (30, 45, 60)),
+  term_days integer not null constraint loans_term_days_check check (term_days between 1 and 120),
   installments_count integer not null default 1,
   start_date date not null,
   payment_frequency text not null default 'Quincenal',
@@ -74,6 +74,12 @@ create table if not exists public.notification_events (
 -- Migration para proyectos que ya tenian la tabla loans creada antes del login.
 alter table public.loans
 add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+alter table public.loans
+drop constraint if exists loans_term_days_check;
+
+alter table public.loans
+add constraint loans_term_days_check check (term_days between 1 and 120);
 
 create index if not exists loans_user_id_idx on public.loans(user_id);
 create index if not exists installments_loan_id_idx on public.installments(loan_id);
