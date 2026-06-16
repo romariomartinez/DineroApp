@@ -1917,3 +1917,181 @@ body[data-page="login"] .auth-brand h1 {
 body[data-page="login"] .login-features {
   margin-top: clamp(28px, 6vh, 60px);
 }
+
+
+/* ===== LOGIN MODERNO PRESTAPP ===== */
+
+body[data-page="login"] {
+  background:
+    radial-gradient(circle at top left, rgba(79, 85, 232, 0.22), transparent 34%),
+    linear-gradient(135deg, #edf3fb, #eaf1fb);
+}
+
+.auth-shell {
+  width: min(1320px, 94vw);
+  min-height: 760px;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 35px 90px rgba(3, 17, 38, 0.18);
+}
+
+.auth-brand {
+  border: 0;
+  border-radius: 0;
+  padding: 70px 90px;
+  color: white;
+  background:
+    radial-gradient(circle at bottom left, rgba(79, 85, 232, 0.45), transparent 32%),
+    linear-gradient(145deg, #061a3b, #102c86 55%, #4338ca);
+}
+
+.auth-logo {
+  width: 120px;
+  max-width: 120px;
+  border-radius: 24px;
+  margin-bottom: 30px;
+  background: rgba(255,255,255,0.1);
+}
+
+.auth-brand h1 {
+  color: #fff;
+  font-size: clamp(3.2rem, 6vw, 5.2rem);
+  letter-spacing: -4px;
+}
+
+.auth-brand p {
+  color: rgba(255,255,255,0.9);
+  font-size: 1.45rem;
+}
+
+.auth-brand .module-kicker {
+  width: fit-content;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  margin-bottom: 24px;
+}
+
+.login-features {
+  display: grid;
+  gap: 22px;
+  margin-top: 60px;
+}
+
+.login-features div {
+  display: grid;
+  gap: 5px;
+}
+
+.login-features strong {
+  font-size: 1.05rem;
+}
+
+.login-features span {
+  color: rgba(255,255,255,0.75);
+}
+
+.auth-panel {
+  border: 0;
+  border-radius: 0;
+  padding: 76px 70px;
+  background: rgba(255,255,255,0.96);
+}
+
+.login-lock {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 22px;
+  border-radius: 999px;
+  background: #f5f7ff;
+  box-shadow: 0 12px 30px rgba(79, 85, 232, 0.12);
+  font-size: 2.3rem;
+}
+
+.auth-panel-header {
+  justify-content: center;
+  text-align: center;
+}
+
+.auth-panel-header h2 {
+  font-size: 2.1rem;
+  color: #061a3b;
+}
+
+.auth-panel-header p {
+  font-size: 1.1rem;
+}
+
+.auth-tabs {
+  margin: 32px 0 24px;
+  grid-template-columns: 1fr;
+  padding: 7px;
+  border-radius: 16px;
+}
+
+.auth-tabs button {
+  min-height: 56px;
+  border-radius: 12px;
+  color: #4f55e8;
+  font-size: 1rem;
+}
+
+.auth-form {
+  gap: 22px;
+}
+
+.auth-form label {
+  font-size: 0.9rem;
+  color: #061a3b;
+}
+
+.auth-form input {
+  min-height: 58px;
+  border-radius: 13px;
+  padding: 0 18px;
+  font-size: 1rem;
+}
+
+.auth-form input:focus {
+  border-color: #4f55e8;
+  box-shadow: 0 0 0 4px rgba(79, 85, 232, 0.14);
+}
+
+.auth-form .primary-button {
+  min-height: 58px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #6266f1, #4338ca);
+  font-size: 1rem;
+  box-shadow: 0 14px 24px rgba(67, 56, 202, 0.24);
+}
+
+.login-secure {
+  margin: 34px 0 0;
+  padding-top: 28px;
+  border-top: 1px solid #e2e8f3;
+  text-align: center;
+  color: #64708a;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .auth-brand {
+    padding: 44px 28px;
+  }
+
+  .auth-panel {
+    padding: 42px 24px;
+  }
+
+  .login-features {
+    margin-top: 34px;
+  }
+}
