@@ -1,52 +1,78 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PrestApp</title>
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/icons/icon-192.png" />
-    <meta name="theme-color" content="#061a3b" />
-  </head>
-  <body data-page="login" data-auth-mode="login">
-    <main class="auth-shell">
-      <section class="auth-brand">
-        <img class="auth-logo" src="/prestapp-logo.png" alt="PrestApp" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrestApp</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <meta name="theme-color" content="#061a3b" />
+</head>
+
+<body data-page="login" data-auth-mode="login">
+  <main class="auth-shell">
+    <section class="auth-brand">
+      <img class="auth-logo" src="/prestapp-logo.png" alt="PrestApp" />
+
+      <span class="module-kicker">🔒 Acceso privado</span>
+
+      <h1>PrestApp</h1>
+      <p>Tu cartera</p>
+
+      <div class="login-features">
         <div>
-          <span class="module-kicker">Acceso privado</span>
-          <h1>PrestApp</h1>
-          <p>Tu cartera</p>
-        </div>
-      </section>
-
-      <section class="auth-panel" aria-label="Acceso a PrestApp">
-        <div class="auth-panel-header">
-          <img class="auth-mark" src="/prestapp-mark.png" alt="" aria-hidden="true" />
-          <div>
-            <h2>Entrar al sistema</h2>
-            <p id="authHint">Ingresa con tu usuario y clave para ver tu cartera privada.</p>
-          </div>
+          <strong>👥 Clientes</strong>
+          <span>Gestiona tu cartera de clientes</span>
         </div>
 
-        <div class="auth-tabs" role="tablist" aria-label="Modo de acceso">
-          <button class="active" type="button" data-auth-mode="login">Entrar</button>
-
+        <div>
+          <strong>💰 Préstamos</strong>
+          <span>Controla préstamos y cuotas</span>
         </div>
 
-        <form id="authForm" class="auth-form">
-          <label>Usuario
-            <input id="authUsername" type="text" autocomplete="username" placeholder="admin" required />
-          </label>
-          <label>Clave
-            <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="Minimo 6 caracteres" required />
-          </label>
-          <button class="primary-button full-width" id="authSubmit" type="submit">Entrar</button>
-        </form>
-      </section>
-    </main>
+        <div>
+          <strong>📊 Reportes</strong>
+          <span>Estadísticas en tiempo real</span>
+        </div>
+      </div>
+    </section>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="/app.js"></script>
-  </body>
+    <section class="auth-panel" aria-label="Acceso a PrestApp">
+      <div class="login-lock">🔐</div>
+
+      <div class="auth-panel-header">
+        <div>
+          <h2>Entrar al sistema</h2>
+          <p id="authHint">Ingresa con tu usuario y clave.</p>
+        </div>
+      </div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Modo de acceso">
+        <button class="active" type="button" data-auth-mode="login">👤 Entrar</button>
+      </div>
+
+      <form id="authForm" class="auth-form">
+        <label>
+          Usuario
+          <input id="authUsername" type="text" autocomplete="username" placeholder="admin" required />
+        </label>
+
+        <label>
+          Clave
+          <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="Mínimo 6 caracteres" required />
+        </label>
+
+        <button class="primary-button full-width" id="authSubmit" type="submit">
+          Entrar
+        </button>
+      </form>
+
+      <p class="login-secure">🛡️ Sistema seguro y protegido</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
 </html>
