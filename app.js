@@ -253,8 +253,8 @@ function setAuthMode(mode) {
   q("authSubmit").textContent = isBootstrap ? "Crear super usuario" : "Entrar";
   q("authPassword").autocomplete = isBootstrap ? "new-password" : "current-password";
   q("authHint").textContent = isBootstrap
-    ? "Solo primera vez: crea el admin. Desactiva confirmacion de email en Supabase."
-    : "Entra con un usuario ya creado. Si es primera vez, usa Crear super usuario.";
+    ? "Crea el primer administrador del sistema."
+    : "Accede con tu usuario y clave.";
 }
 
 async function handleAuthSubmit(event) {
