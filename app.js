@@ -1281,9 +1281,8 @@ function saveState(options = {}) {
 async function loadRemoteState() {
   if (!supabase) return;
   try {
-    if (hasPendingSync()) {
-      await flushRemoteSave();
-    }
+    const localState = sanitizeState({ loans: state.loans.map(normalizeLoan) }, { removeLegacyDemos: true });
+    const hadPendingSync = hasPendingSync();
 
     const { data: loans, error: loansError } = await supabase
       .from("loans")
@@ -1293,7 +1292,8 @@ async function loadRemoteState() {
     if (loansError) throw loansError;
 
     if (!loans?.length) {
-      if (state.loans.length) {
+      if (localState.loans.length) {
+        state = localState;
         await flushRemoteSave();
         showToast("Datos locales sincronizados");
       }
@@ -1310,14 +1310,23 @@ async function loadRemoteState() {
     if (installmentsError) throw installmentsError;
     if (paymentsError) throw paymentsError;
 
-    state = sanitizeState(
+    const remoteState = sanitizeState(
       { loans: loans.map((loan) => fromDbLoan(loan, installments || [], payments || [])) },
       { removeLegacyDemos: true }
     );
+    const merged = hadPendingSync ? mergeLocalPendingState(remoteState, localState) : { state: remoteState, needsUpload: false };
+    state = merged.state;
     selectedLoanId = state.loans[0]?.id || "";
     storageSet(SELECTED_LOAN_KEY, selectedLoanId);
     storageSet(STORAGE_KEY, JSON.stringify(state));
     renderAll();
+    if (merged.needsUpload) {
+      await flushRemoteSave();
+      showToast("Datos sincronizados con Supabase");
+    } else if (hadPendingSync) {
+      clearPendingSync();
+      showToast("Datos restaurados de Supabase");
+    }
   } catch (error) {
     handleSupabaseError(error, "cargar datos");
   }
@@ -1340,6 +1349,8 @@ async function flushRemoteSave() {
 
 async function syncAllToSupabase() {
   if (!supabase) return;
+  state = sanitizeState({ loans: state.loans.map(normalizeLoan) }, { removeLegacyDemos: true });
+  storageSet(STORAGE_KEY, JSON.stringify(state));
   const pendingDeletedLoanIds = getPendingDeletedLoanIds();
 
   if (!state.loans.length) {
@@ -1432,6 +1443,53 @@ function clearPendingDeletedLoanIds(loanIds) {
   else storageRemove(DELETED_LOANS_KEY);
 }
 
+function mergeLocalPendingState(remoteState, localState) {
+  const deletedIds = new Set(getPendingDeletedLoanIds());
+  const loansById = new Map(remoteState.loans.map((loan) => [loan.id, loan]));
+  let needsUpload = false;
+
+  localState.loans.forEach((localLoan) => {
+    if (deletedIds.has(localLoan.id)) {
+      if (loansById.delete(localLoan.id)) needsUpload = true;
+      return;
+    }
+
+    const remoteLoan = loansById.get(localLoan.id);
+    if (!remoteLoan) {
+      loansById.set(localLoan.id, localLoan);
+      needsUpload = true;
+      return;
+    }
+
+    if (getLoanUpdatedTime(localLoan) > getLoanUpdatedTime(remoteLoan)) {
+      loansById.set(localLoan.id, localLoan);
+      needsUpload = true;
+    }
+  });
+
+  return {
+    state: { loans: sortLoansByCreated([...loansById.values()]) },
+    needsUpload,
+  };
+}
+
+function sortLoansByCreated(loans) {
+  return loans.sort((first, second) => getLoanCreatedTime(second) - getLoanCreatedTime(first));
+}
+
+function getLoanUpdatedTime(loan) {
+  return getTimeValue(loan.updatedAt || loan.createdAt);
+}
+
+function getLoanCreatedTime(loan) {
+  return getTimeValue(loan.createdAt || loan.updatedAt);
+}
+
+function getTimeValue(value) {
+  const time = new Date(value || 0).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
 function createLoanFromForm() {
   const amount = numberFrom(q("amount").value);
   const interestRate = numberFrom(q("interestRate").value);
@@ -1455,6 +1513,7 @@ function createLoanFromForm() {
     installments: buildSchedule(totals.total, installmentsCount, startDate, termDays),
     payments: [],
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -1485,7 +1544,7 @@ function buildSchedule(total, count, startDate, termDays) {
 }
 
 function normalizeLoan(loan) {
-  return {
+  const normalized = {
     ...loan,
     interestType: normalizeInterestType(loan.interestType || loan.interest_type),
     termDays: clampTermDays(loan.termDays || loan.term_days || 30),
@@ -1502,6 +1561,27 @@ function normalizeLoan(loan) {
         }))
       : [],
   };
+  return reconcileLoanPaymentHistory(normalized);
+}
+
+function reconcileLoanPaymentHistory(loan) {
+  if (!loan.installments.length || !loan.payments.length) return loan;
+  const paidFromInstallments = getPaidFromInstallments(loan);
+  const paidFromPayments = getPaidFromPayments(loan);
+  if (paidFromPayments <= paidFromInstallments) return loan;
+
+  const repaired = {
+    ...loan,
+    installments: loan.installments.map((installment) => ({
+      ...installment,
+      paid: 0,
+      paidDate: "",
+    })),
+  };
+  const lastPaymentDate = loan.payments.at(-1)?.date || todayIso;
+  const scheduleTotal = repaired.installments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  applyPaidAmountToSchedule(repaired, Math.min(paidFromPayments, scheduleTotal), lastPaymentDate);
+  return repaired;
 }
 
 function sanitizeState(value, options = {}) {
@@ -1570,6 +1650,7 @@ function updateLoanFromEditForm(loan) {
   loan.paymentFrequency = q("editPaymentFrequency").value;
   loan.installments = buildSchedule(totals.total, installmentsCount, startDate, termDays);
   applyPaidAmountToSchedule(loan, Math.min(totalPaid, totals.total), lastPaymentDate);
+  touchLoan(loan);
 }
 
 function applyPaidAmountToSchedule(loan, paidAmount, paidDate) {
@@ -1607,6 +1688,7 @@ function applyPayment(loan, installmentId, amount, details) {
     note: details.note,
   };
   loan.payments.push(payment);
+  touchLoan(loan);
   return payment;
 }
 
@@ -1638,7 +1720,7 @@ function getLoanSummary(loan) {
     clampTermDays(loan.termDays || 30),
     normalizeInterestType(loan.interestType)
   );
-  const paid = loan.installments.reduce((sum, item) => sum + Number(item.paid || 0), 0);
+  const paid = Math.min(totals.total, Math.max(getPaidFromInstallments(loan), getPaidFromPayments(loan)));
   return {
     monthlyInterest: totals.monthlyInterest,
     termMonths: totals.termMonths,
@@ -1647,6 +1729,18 @@ function getLoanSummary(loan) {
     paid,
     remaining: Math.max(0, totals.total - paid),
   };
+}
+
+function getPaidFromInstallments(loan) {
+  return (loan.installments || []).reduce((sum, item) => sum + Number(item.paid || 0), 0);
+}
+
+function getPaidFromPayments(loan) {
+  return (loan.payments || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+}
+
+function touchLoan(loan) {
+  loan.updatedAt = new Date().toISOString();
 }
 
 function getLoanStatus(loan) {
@@ -1774,7 +1868,7 @@ function getLoansForExport(type) {
   const filters = { "Solo activos": "active", "Solo en mora": "overdue", "Solo pagados": "closed" };
   const status = filters[type];
   if (!status) return state.loans;
-  return state.loans.filter((loan) => getLoanStatus(loan).key === status);
+  return state.loans.filter((loan) => matchesStatusFilter(getLoanStatus(loan).key, status));
 }
 
 function toDbLoan(loan) {
@@ -1792,7 +1886,7 @@ function toDbLoan(loan) {
     payment_frequency: loan.paymentFrequency,
     notes: loan.notes || "",
     created_at: loan.createdAt || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    updated_at: loan.updatedAt || loan.createdAt || new Date().toISOString(),
   };
 }
 
@@ -1820,7 +1914,7 @@ function toDbPayment(payment, loanId) {
 }
 
 function fromDbLoan(loan, installments, payments) {
-  return {
+  return reconcileLoanPaymentHistory({
     id: loan.id,
     borrower: loan.borrower,
     phone: loan.phone || "",
@@ -1836,7 +1930,8 @@ function fromDbLoan(loan, installments, payments) {
     installments: installments.filter((item) => item.loan_id === loan.id).map(fromDbInstallment),
     payments: payments.filter((item) => item.loan_id === loan.id).map(fromDbPayment),
     createdAt: loan.created_at || new Date().toISOString(),
-  };
+    updatedAt: loan.updated_at || loan.created_at || new Date().toISOString(),
+  });
 }
 
 function fromDbInstallment(installment) {
