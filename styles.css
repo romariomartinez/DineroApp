@@ -892,6 +892,11 @@ td {
   color: #1478cb;
 }
 
+.status-pending {
+  background: #fff2cc;
+  color: #936000;
+}
+
 .row-actions {
   display: flex;
   gap: 6px;

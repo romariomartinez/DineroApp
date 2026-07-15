@@ -965,7 +965,7 @@ function renderMetrics() {
       acc.interest += summary.interest;
       acc.paid += summary.paid;
       acc.pending += summary.remaining;
-      if (status.key === "active") acc.active += 1;
+      if (isOpenOnTrackStatus(status.key)) acc.active += 1;
       if (status.key === "overdue") acc.overdue += 1;
       acc.upcoming += countUpcomingInstallments(loan);
       return acc;
@@ -988,7 +988,7 @@ function renderLoansTable() {
   const query = q("searchInput")?.value.trim().toLowerCase() || "";
   const loans = state.loans.filter((loan) => {
     const status = getLoanStatus(loan);
-    const matchesFilter = activeFilter === "all" || status.key === activeFilter;
+    const matchesFilter = matchesStatusFilter(status.key, activeFilter);
     const matchesQuery = `${loan.borrower} ${loan.phone}`.toLowerCase().includes(query);
     return matchesFilter && matchesQuery;
   });
@@ -1060,7 +1060,7 @@ function renderChart() {
     (acc, loan) => {
       const status = getLoanStatus(loan).key;
       if (status === "closed") acc.closed += 1;
-      if (status === "active") acc.active += 1;
+      if (isOpenOnTrackStatus(status)) acc.active += 1;
       if (status === "overdue") acc.overdue += 1;
       return acc;
     },
@@ -1121,7 +1121,7 @@ function renderSelectedLoan() {
       ? { label: "Pagada", className: "status-active" }
       : isOverdue
         ? { label: "En mora", className: "status-overdue" }
-        : { label: "Pendiente", className: "status-closed" };
+        : { label: "Pendiente", className: "status-pending" };
 
     return `
       <tr>
@@ -1652,9 +1652,21 @@ function getLoanSummary(loan) {
 function getLoanStatus(loan) {
   const summary = getLoanSummary(loan);
   if (summary.remaining <= 0) return { key: "closed", label: "Pagado", className: "status-closed" };
-  const hasOverdue = loan.installments.some((item) => item.amount > item.paid && item.dueDate < todayIso);
+  const installments = Array.isArray(loan.installments) ? loan.installments : [];
+  const hasOverdue = installments.some((item) => item.amount > item.paid && item.dueDate < todayIso);
   if (hasOverdue) return { key: "overdue", label: "En mora", className: "status-overdue" };
-  return { key: "active", label: "Activo", className: "status-active" };
+  if (summary.paid > 0) return { key: "active", label: "Abonado", className: "status-active" };
+  return { key: "pending", label: "Pendiente", className: "status-pending" };
+}
+
+function isOpenOnTrackStatus(statusKey) {
+  return statusKey === "active" || statusKey === "pending";
+}
+
+function matchesStatusFilter(statusKey, filter) {
+  if (filter === "all") return true;
+  if (filter === "active") return isOpenOnTrackStatus(statusKey);
+  return statusKey === filter;
 }
 
 function countUpcomingInstallments(loan) {
@@ -1674,15 +1686,15 @@ function getClients() {
       firstLoanId: loan.id,
       loanCount: 0,
       totalAmount: 0,
+      paid: 0,
       pending: 0,
       hasOverdue: false,
-      hasActive: false,
     };
     current.loanCount += 1;
     current.totalAmount += loan.amount;
+    current.paid += summary.paid;
     current.pending += summary.remaining;
     current.hasOverdue = current.hasOverdue || getLoanStatus(loan).key === "overdue";
-    current.hasActive = current.hasActive || getLoanStatus(loan).key === "active";
     clients.set(key, current);
   });
 
@@ -1691,7 +1703,9 @@ function getClients() {
       ? { label: "En mora", className: "status-overdue" }
       : client.pending <= 0
         ? { label: "Pagado", className: "status-closed" }
-        : { label: "Activo", className: "status-active" };
+        : client.paid > 0
+          ? { label: "Abonado", className: "status-active" }
+          : { label: "Pendiente", className: "status-pending" };
     return { ...client, status };
   });
 }
