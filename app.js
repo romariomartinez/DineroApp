@@ -69,6 +69,7 @@ let activeFilter = new URLSearchParams(window.location.search).get("filter") || 
 let selectedLoanId = "";
 let syncTimer = null;
 let supabaseSchemaReady = Boolean(supabase);
+let remoteStateLoaded = !supabase;
 let deferredInstallPrompt = null;
 let firebaseApp = null;
 let firebaseMessaging = null;
@@ -1139,6 +1140,14 @@ function renderSelectedLoan() {
 function renderPaymentForm() {
   const loanSelect = q("paymentLoanSelect");
   if (!loanSelect) return;
+  const repairedSchedules = repairStateSchedules(state, { touch: remoteStateLoaded });
+  if (repairedSchedules) {
+    storageSet(STORAGE_KEY, JSON.stringify(state));
+    if (remoteStateLoaded) {
+      saveState({ immediate: true }).catch((error) => handleSupabaseError(error, "reparar cuotas"));
+    }
+  }
+
   const pendingLoans = state.loans.filter((loan) => getLoanSummary(loan).remaining > 0);
   const button = q("paymentForm")?.querySelector("button");
 
@@ -1160,9 +1169,11 @@ function renderPaymentForm() {
   selectLoan(selectedLoan.id);
 
   const pendingInstallments = selectedLoan.installments.filter((item) => item.amount > item.paid);
-  q("paymentInstallmentSelect").innerHTML = pendingInstallments
-    .map((item) => `<option value="${item.id}">Cuota ${item.number} - ${formatMoney(item.amount - item.paid)}</option>`)
-    .join("");
+  q("paymentInstallmentSelect").innerHTML = pendingInstallments.length
+    ? pendingInstallments
+        .map((item) => `<option value="${item.id}">Cuota ${item.number} - ${formatMoney(item.amount - item.paid)}</option>`)
+        .join("")
+    : `<option value="">Sin cuotas pendientes</option>`;
 
   const preferredInstallmentId = storageGet(SELECTED_INSTALLMENT_KEY);
   const installment = pendingInstallments.find((item) => item.id === preferredInstallmentId) || pendingInstallments[0];
@@ -1170,6 +1181,10 @@ function renderPaymentForm() {
     q("paymentInstallmentSelect").value = installment.id;
     q("paymentAmount").value = installment.amount - installment.paid;
     q("paymentAmount").max = getLoanSummary(selectedLoan).remaining;
+    if (button) button.disabled = false;
+  } else {
+    q("paymentAmount").value = "";
+    if (button) button.disabled = true;
   }
   q("paymentDate").value = todayIso;
 }
@@ -1297,6 +1312,7 @@ async function loadRemoteState() {
         await flushRemoteSave();
         showToast("Datos locales sincronizados");
       }
+      remoteStateLoaded = true;
       return;
     }
 
@@ -1316,11 +1332,13 @@ async function loadRemoteState() {
     );
     const merged = hadPendingSync ? mergeLocalPendingState(remoteState, localState) : { state: remoteState, needsUpload: false };
     state = merged.state;
+    const repairedSchedules = repairStateSchedules(state, { touch: true });
     selectedLoanId = state.loans[0]?.id || "";
     storageSet(SELECTED_LOAN_KEY, selectedLoanId);
     storageSet(STORAGE_KEY, JSON.stringify(state));
+    remoteStateLoaded = true;
     renderAll();
-    if (merged.needsUpload) {
+    if (merged.needsUpload || repairedSchedules) {
       await flushRemoteSave();
       showToast("Datos sincronizados con Supabase");
     } else if (hadPendingSync) {
@@ -1565,23 +1583,60 @@ function normalizeLoan(loan) {
 }
 
 function reconcileLoanPaymentHistory(loan) {
-  if (!loan.installments.length || !loan.payments.length) return loan;
+  repairLoanSchedule(loan, { touch: false });
+  return loan;
+}
+
+function repairStateSchedules(targetState = state, options = {}) {
+  return targetState.loans.reduce((didRepair, loan) => repairLoanSchedule(loan, options) || didRepair, false);
+}
+
+function repairLoanSchedule(loan, options = {}) {
+  const totals = getLoanExpectedTotals(loan);
+  const installments = Array.isArray(loan.installments) ? loan.installments : [];
+  const scheduleTotal = getScheduleTotal(loan);
   const paidFromInstallments = getPaidFromInstallments(loan);
   const paidFromPayments = getPaidFromPayments(loan);
-  if (paidFromPayments <= paidFromInstallments) return loan;
+  const paidAmount = Math.min(totals.total, Math.max(paidFromInstallments, paidFromPayments));
+  const hasPayableInstallment = installments.some((item) => Number(item.amount || 0) > Number(item.paid || 0));
+  const hasRemainingWithoutInstallment = totals.total > paidAmount && !hasPayableInstallment;
+  const needsRepair =
+    !installments.length ||
+    !sameMoney(scheduleTotal, totals.total) ||
+    paidFromPayments > paidFromInstallments ||
+    hasRemainingWithoutInstallment;
 
-  const repaired = {
-    ...loan,
-    installments: loan.installments.map((installment) => ({
-      ...installment,
-      paid: 0,
-      paidDate: "",
-    })),
-  };
-  const lastPaymentDate = loan.payments.at(-1)?.date || todayIso;
-  const scheduleTotal = repaired.installments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  applyPaidAmountToSchedule(repaired, Math.min(paidFromPayments, scheduleTotal), lastPaymentDate);
-  return repaired;
+  if (!needsRepair) return false;
+
+  const installmentsCount = Math.max(1, Number(loan.installmentsCount || installments.length || 1));
+  loan.installments = buildSchedule(totals.total, installmentsCount, loan.startDate || todayIso, clampTermDays(loan.termDays || 30));
+  applyPaidAmountToSchedule(loan, paidAmount, getLastPaymentDate(loan));
+  if (options.touch !== false) touchLoan(loan);
+  return true;
+}
+
+function getLoanExpectedTotals(loan) {
+  return calculateTotals(
+    Number(loan.amount || 0),
+    Number(loan.interestRate || 0),
+    Math.max(1, Number(loan.installmentsCount || loan.installments?.length || 1)),
+    clampTermDays(loan.termDays || 30),
+    normalizeInterestType(loan.interestType)
+  );
+}
+
+function getScheduleTotal(loan) {
+  return (loan.installments || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+}
+
+function getLastPaymentDate(loan) {
+  const paymentDates = (loan.payments || []).map((payment) => payment.date).filter(Boolean);
+  const paidDates = (loan.installments || []).map((installment) => installment.paidDate).filter(Boolean);
+  return [...paymentDates, ...paidDates].sort().at(-1) || todayIso;
+}
+
+function sameMoney(first, second) {
+  return Math.round(Number(first || 0)) === Math.round(Number(second || 0));
 }
 
 function sanitizeState(value, options = {}) {
@@ -1713,13 +1768,7 @@ function deleteClient(clientKey, clientName) {
 }
 
 function getLoanSummary(loan) {
-  const totals = calculateTotals(
-    Number(loan.amount || 0),
-    Number(loan.interestRate || 0),
-    Math.max(1, Number(loan.installmentsCount || loan.installments?.length || 1)),
-    clampTermDays(loan.termDays || 30),
-    normalizeInterestType(loan.interestType)
-  );
+  const totals = getLoanExpectedTotals(loan);
   const paid = Math.min(totals.total, Math.max(getPaidFromInstallments(loan), getPaidFromPayments(loan)));
   return {
     monthlyInterest: totals.monthlyInterest,
